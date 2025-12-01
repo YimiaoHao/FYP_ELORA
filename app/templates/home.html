@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>ELORA Home</h2>
+
+<p>Welcome to the ELORA obesity risk prototype.</p>
+<p>You can record today's data, view history, see trends and check a simple risk assessment.</p>
+
+<hr>
+
+<h3>Privacy note (prototype)</h3>
+<p>
+    This prototype stores all records <strong>locally</strong> in a small SQLite database
+    on your own machine. Data is not sent to any remote server.
+</p>
+<ul>
+    <li>You can download your data at any time via the <strong>History → Download CSV</strong> button.</li>
+    <li>You can permanently delete all records via the <strong>Clear history</strong> button.</li>
+    <li>No name, email, address or student ID is collected in this prototype.</li>
+</ul>
+
+<p style="font-size: 0.9em; color: #666;">
+    This system is an educational prototype only and does not provide medical advice.
+</p>
+
+{% endblock %}

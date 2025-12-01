@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Record Today</h2>
+
+<form method="post">
+    <div>
+        <label>Date:
+            <input type="date" name="date" required>
+        </label>
+    </div>
+
+    <div>
+        <label>Age (years):
+            <input type="number" name="age" min="14" max="99" required>
+        </label>
+    </div>
+
+    <div>
+        <label>Gender:
+            <select name="gender" required>
+                <option value="">-- select --</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="O">Other / Prefer not to say</option>
+            </select>
+        </label>
+    </div>
+
+    <div>
+        <label>Height (m):
+            <input type="number" step="0.01" name="height_m" min="1.20" max="2.30" required>
+        </label>
+    </div>
+
+    <div>
+        <label>Weight (kg):
+            <input type="number" step="0.1" name="weight_kg" min="35" max="250" required>
+        </label>
+    </div>
+
+    <div>
+        <label>Family history of overweight/obesity:
+            <select name="family_history" required>
+                <option value="">-- select --</option>
+                <option value="Y">Yes</option>
+                <option value="N">No</option>
+            </select>
+        </label>
+    </div>
+
+    <div>
+        <label>Activity level (typical week):
+            <select name="activity_level" required>
+                <option value="">-- select --</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+        </label>
+    </div>
+
+    <div>
+        <label>Water intake today (ml):
+            <input type="number" name="water_ml" min="0" max="6000" step="100" required>
+        </label>
+    </div>
+
+    <div style="margin-top: 12px;">
+        <button type="submit">Save (preview only)</button>
+    </div>
+</form>
+
+{% if submitted %}
+<hr>
+<h3>Preview of today's record</h3>
+<p><strong>Date:</strong> {{ data.date }}</p>
+<p><strong>Age:</strong> {{ data.age }}</p>
+<p><strong>Gender:</strong> {{ data.gender }}</p>
+<p><strong>Height (m):</strong> {{ data.height_m }}</p>
+<p><strong>Weight (kg):</strong> {{ data.weight_kg }}</p>
+<p><strong>Family history:</strong> {{ data.family_history }}</p>
+<p><strong>Activity level:</strong> {{ data.activity_level }}</p>
+<p><strong>Water (ml):</strong> {{ data.water_ml }}</p>
+
+{% if bmi %}
+<p><strong>Calculated BMI:</strong> {{ bmi }}</p>
+{% endif %}
+{% endif %}
+
+{% endblock %}

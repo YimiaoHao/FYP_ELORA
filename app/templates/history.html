@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>History (last 30 records)</h2>
+
+<form method="post" action="/history/clear" onsubmit="return confirm('This will delete all records permanently. Continue?');">
+    <button type="submit">Clear history</button>
+</form>
+<p>
+    <a href="/export" class="btn">Download history as CSV</a>
+</p>
+<br>
+
+
+{% if records %}
+<table border="1" cellspacing="0" cellpadding="4">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Height (m)</th>
+            <th>Weight (kg)</th>
+            <th>BMI</th>
+            <th>Activity</th>
+            <th>Water (ml)</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+        <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.age }}</td>
+            <td>{{ r.gender }}</td>
+            <td>{{ "%.2f"|format(r.height_m) }}</td>
+            <td>{{ "%.1f"|format(r.weight_kg) }}</td>
+            <td>
+                {% if r.bmi is not none %}
+                    {{ "%.1f"|format(r.bmi) }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>{{ r.activity_level }}</td>
+            <td>{{ r.water_ml }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No records yet. Please add one in "Record Today".</p>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Risk Assessment</h2>
+
+{% if not has_record %}
+<p>No records available yet. Please add at least one entry in "Record Today".</p>
+{% else %}
+
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #2196F3;">
+    <h2 style="margin-top:0; color: #0d47a1;">Final Hybrid Risk Score: {{ final_risk_percent }}%</h2>
+    <p>
+        Calculated using ELORA Hybrid Algorithm: <br>
+        <code>Risk = 0.7 × Model_Prob + 0.3 × Rules_Score</code>
+    </p>
+    <div class="risk-bar-outer" style="height: 24px; background: #ccc;">
+        <div class="risk-bar-fill" style="width: {{ final_risk_percent }}%; background: #d32f2f;"></div>
+    </div>
+</div>
+
+<h3>Latest record ({{ record.date }})</h3>
+<ul>
+    <li>Age: {{ record.age }}</li>
+    <li>Gender: {{ record.gender }}</li>
+    <li>Height: {{ "%.2f"|format(record.height_m) }} m</li>
+    <li>Weight: {{ "%.1f"|format(record.weight_kg) }} kg</li>
+    <li>Activity level: {{ record.activity_level }}</li>
+    <li>Water today: {{ record.water_ml }} ml</li>
+</ul>
+
+<h3>Obesity risk (BMI-based prototype)</h3>
+<p><strong>BMI:</strong> {{ "%.1f"|format(bmi) }}</p>
+<p><strong>Category:</strong> {{ bmi_category }}</p>
+
+<div class="risk-bar-outer">
+    <div class="risk-bar-fill" style="width: {{ risk_score }}%;"></div>
+</div>
+<p style="font-size: 12px; color:#666; margin-top:4px;">
+    Risk score (0–100): {{ risk_score }} (based on BMI only, demonstration version)
+</p>
+
+<h3>Model-based assessment (data-mining prototype)</h3>
+
+{% if ml_available %}
+    <p><strong>Predicted obesity level:</strong> {{ model_label }}</p>
+    <p><strong>Model confidence:</strong> {{ "%.0f"|format(model_confidence * 100) }}%</p>
+{% else %}
+    <p>Model prediction is currently unavailable.</p>
+{% endif %}
+
+{% if tips %}
+<h3>Personalised tips (demo)</h3>
+<ul>
+    {% for tip in tips %}
+        <li>{{ tip }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% endif %}
+{% endblock %}

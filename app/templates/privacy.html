@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Privacy & Data Handling</h2>
+
+<p>
+    ELORA is a local prototype designed for a final year project. It focuses on
+    modelling obesity risk and visualising lifestyle trends, while keeping data
+    on the user's own device.
+</p>
+
+<h3>What data does ELORA store?</h3>
+<ul>
+    <li>Daily records: date, age, gender, height, weight</li>
+    <li>Simple lifestyle fields: family history flag, activity level, water intake</li>
+    <li>Derived BMI value for each record</li>
+</ul>
+
+<p>No name, email address, student ID, home address or contact details are stored.</p>
+
+<h3>Where is the data stored?</h3>
+<ul>
+    <li>Data is stored in a local SQLite database file under the ELORA project folder.</li>
+    <li>The prototype does not send records to any remote server or cloud service.</li>
+</ul>
+
+<h3>How can the user control their data?</h3>
+<ul>
+    <li>Use the <strong>Download history as CSV</strong> option on the History page to export a copy.</li>
+    <li>Use the <strong>Clear history</strong> button to permanently delete all records from the local database.</li>
+</ul>
+
+<h3>Use in research / teaching context</h3>
+<p>
+    This prototype is intended for demonstration and educational purposes only.
+    It does not provide medical diagnosis or treatment recommendations.
+    Any health-related decisions should be made with a qualified clinician.
+</p>
+
+{% endblock %}
