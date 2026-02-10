@@ -35,8 +35,8 @@ Ensure Python 3.8 or higher is installed on the local machine.
 
 ### 2. Clone Repository
 ```bash
-git clone [https://github.com/YimiaoHao/ELORA.git](https://github.com/YimiaoHao/ELORA.git)
-cd ELORA
+git clone https://github.com/YimiaoHao/FYP_ELORA.git
+cd FYP_ELORA
 ````
 
 ### 3\. Environment Setup
