@@ -1,0 +1,32 @@
+# -----------------------
+# Local database / data
+# -----------------------
+elora.db
+*.db
+*.sqlite
+*.sqlite3
+
+# -----------------------
+# Python env / caches
+# -----------------------
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# -----------------------
+# OS / IDE
+# -----------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# -----------------------
+# Secrets / env files
+# -----------------------
+.env
+.env.*
