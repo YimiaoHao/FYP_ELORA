@@ -9,15 +9,10 @@ import datetime as dt
 import io
 import csv
 
-# 这个 ml_service 来自 app/ml/__init__.py，用在 Assessment 里：
-# ml_service.record_to_features(...) / ml_service.predict_label(...)
-from app.ml import ml_service
-
 # 给 /api/predict 用的输入 / 输出模型
 from .schemas import RecordInput, PredictionResponse
 
-# 给 /api/predict 用的“字段版预测函数”，来自 app/ml_service.py
-from .ml_service import predict_obesity_level_from_fields
+from .ml_service import predict_obesity_level, predict_obesity_level_from_fields
 from .rules import classify_bmi, generate_tips
 from .database import Base, engine, get_db
 from . import models
@@ -337,10 +332,7 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
     model_confidence = 0.0
 
     try:
-        # 这两个函数名按你自己的 ml_service 来：
-        # 如果你之前叫的是别的名字，就对着改一下即可。
-        features = ml_service.record_to_features(record)
-        model_label, model_confidence = ml_service.predict_label(features)
+        model_label, model_confidence = predict_obesity_level(record)
         ml_available = True
     except Exception as e:
         print("ML prediction error:", e)

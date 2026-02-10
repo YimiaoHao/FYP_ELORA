@@ -1,10 +1,11 @@
 # app/ml_service.py
 """
-Utility functions to load the trained obesity model and
-make predictions.
+Single source of truth for ML inference.
 
-- predict_obesity_level(record):              给 Assessment 等地方用（传入 Record 实例）
-- predict_obesity_level_from_fields(...):    给 /api/predict 用（传入 age/gender 等字段）
+- record_to_features(record) -> DataFrame with 7 columns (matches training)
+- predict_label(df) -> (label, confidence)
+- predict_obesity_level(record)
+- predict_obesity_level_from_fields(...)
 """
 
 from pathlib import Path
@@ -14,110 +15,89 @@ from types import SimpleNamespace
 import joblib
 import pandas as pd
 
-from . import models  # 只是做类型提示用
-
-
 # 模型文件路径：app/ml/obesity_model.joblib
 MODEL_PATH = Path(__file__).resolve().parent / "ml" / "obesity_model.joblib"
 _model = None
 
 
 def load_model():
-    """懒加载模型，只在第一次调用时从磁盘读 joblib。"""
+    """Lazy-load model (joblib) once."""
     global _model
     if _model is None:
+        if not MODEL_PATH.exists():
+            raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
         _model = joblib.load(MODEL_PATH)
     return _model
 
 
-def _get(record, name, default=None):
-    """安全地从 Record 上取字段，没有就用默认值。"""
-    return getattr(record, name, default)
+def _norm_gender(g: str) -> str:
+    g = (g or "").strip().lower()
+    if g.startswith("m") or g == "male":
+        return "Male"
+    # O / other 也先映射到 Female，避免模型没见过类别
+    return "Female"
 
 
-def _map_record_to_features(record: models.Record) -> pd.DataFrame:
+def _norm_family_history(x: str) -> str:
+    s = (x or "").strip().lower()
+    return "Y" if s in ("y", "yes", "1", "true") else "N"
+
+
+def _norm_activity_level(x: str) -> str:
+    s = (x or "").strip().lower()
+    if s in ("mid", "moderate"):
+        return "medium"
+    if s not in ("low", "medium", "high"):
+        return "medium"
+    return s
+
+
+def record_to_features(record) -> pd.DataFrame:
     """
-    把我们系统里的 Record 映射成 obesity_level.csv 的特征格式。
-    注意：有些特征在数据集中是数字 0/1，我们这里也必须给数字！
+    Map a Record (or record-like object) to the 7-feature DataFrame
+    that matches train_obesity_model.py.
     """
+    age = int(getattr(record, "age", 25) or 25)
+    gender = _norm_gender(getattr(record, "gender", "F"))
+    height_m = float(getattr(record, "height_m", 1.65) or 1.65)
+    weight_kg = float(getattr(record, "weight_kg", 60.0) or 60.0)
+    family_history = _norm_family_history(getattr(record, "family_history", "N"))
+    activity_level = _norm_activity_level(getattr(record, "activity_level", "medium"))
+    water_ml = int(getattr(record, "water_ml", 1500) or 1500)
 
-    # Gender: 'Male' / 'Female'  —— 这列在数据集中是字符串
-    g = str(_get(record, "gender", "F")).upper()
-    gender = "Male" if g.startswith("M") else "Female"
-
-    # Age / Height / Weight  —— 数值
-    age = _get(record, "age", 25)
-    height = float(_get(record, "height_m", 1.65) or 1.65)
-    weight = float(_get(record, "weight_kg", 60.0) or 60.0)
-
-    # family_history_with_overweight  —— 在 csv 里是 0/1，所以这里也用 0/1
-    fh_raw = _get(record, "family_history", "N")
-    fh = str(fh_raw).upper()
-    family_history_over = 1 if fh.startswith("Y") else 0  # 数字，不是 'yes'/'no'
-
-    # Water intake (ml) → CH2O  —— 原数据是浮点型，我们用 1/2/3 当作大致层级
-    water_ml = _get(record, "water_ml", None)
-    if water_ml is None:
-        ch2o = 2.0
-    elif water_ml < 1000:
-        ch2o = 1.0
-    elif water_ml < 2000:
-        ch2o = 2.0
-    else:
-        ch2o = 3.0
-
-    # 活动水平 → FAF (浮点数)
-    level = str(_get(record, "activity_level", "low")).lower()
-    if level == "low":
-        faf = 0.0
-    elif level in ("medium", "mid", "moderate"):
-        faf = 1.0
-    else:
-        faf = 2.0  # high
-
-    # 其他行为特征：
-    #   FAVC, SMOKE, SCC = 0/1（数字）
-    #   FCVC, NCP, CH2O, FAF, TUE = 浮点数
-    #   CAEC, CALC, MTRANS = 字符串
-    sample = {
-        "Gender": gender,                       # str
-        "Age": age,                             # float/int
-        "Height": height,                       # float
-        "Weight": weight,                       # float
-        "family_history_with_overweight": family_history_over,  # int(0/1)
-        "FAVC": 0,                              # int 默认：不经常吃高热量食物
-        "FCVC": 2.0,                            # float 默认中等吃蔬菜
-        "NCP": 3.0,                             # float 默认每天三餐
-        "CAEC": "Sometimes",                    # str
-        "SMOKE": 0,                             # int 默认不吸烟
-        "CH2O": ch2o,                           # float
-        "SCC": 0,                               # int 默认不刻意控卡
-        "FAF": faf,                             # float
-        "TUE": 2.0,                             # float 默认中等屏幕时间
-        "CALC": "no",                           # str
-        "MTRANS": "Public_Transportation",      # str
-    }
-
-    return pd.DataFrame([sample])
+    X = pd.DataFrame(
+        [{
+            "age": age,
+            "gender": gender,
+            "height_m": height_m,
+            "weight_kg": weight_kg,
+            "family_history": family_history,
+            "activity_level": activity_level,
+            "water_ml": water_ml,
+        }]
+    )
+    return X
 
 
-def predict_obesity_level(record: models.Record) -> Tuple[str, float]:
-    """
-    返回： (预测类别, 这一类别的概率 0~1)
-    这是给 Assessment 等地方用的（传进来的是数据库里的 Record 实例）。
-    """
+def predict_label(features_df: pd.DataFrame) -> Tuple[str, float]:
+    """Return (label, confidence 0~1)."""
     model = load_model()
-    X = _map_record_to_features(record)
 
-    proba = model.predict_proba(X)[0]   # numpy 数组
-    classes = model.classes_
+    # Pipeline 分类器通常支持 predict_proba
+    if hasattr(model, "predict_proba"):
+        proba = model.predict_proba(features_df)[0]
+        classes = model.classes_
+        idx = int(proba.argmax())
+        return str(classes[idx]), float(proba[idx])
 
-    # 取概率最大的类别
-    idx = int(proba.argmax())
-    label = str(classes[idx])
-    score = float(proba[idx])
+    # 兜底：没有 proba 就返回 0.0
+    pred = model.predict(features_df)[0]
+    return str(pred), 0.0
 
-    return label, score
+
+def predict_obesity_level(record) -> Tuple[str, float]:
+    X = record_to_features(record)
+    return predict_label(X)
 
 
 def predict_obesity_level_from_fields(
@@ -129,11 +109,7 @@ def predict_obesity_level_from_fields(
     activity_level: str,
     water_ml: int,
 ) -> Tuple[str, float]:
-    """
-    给 /api/predict 用的版本：直接用简单字段，不需要真正的 Record。
-    内部构造一个“假 Record”，复用上面的 predict_obesity_level。
-    """
-    fake_record = SimpleNamespace(
+    fake = SimpleNamespace(
         age=age,
         gender=gender,
         height_m=height_m,
@@ -142,4 +118,4 @@ def predict_obesity_level_from_fields(
         activity_level=activity_level,
         water_ml=water_ml,
     )
-    return predict_obesity_level(fake_record)
+    return predict_obesity_level(fake)
