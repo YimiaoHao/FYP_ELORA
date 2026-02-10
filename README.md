@@ -50,6 +50,7 @@ python -m venv venv
 
 # Install dependencies
 pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
 ### 4\. Run Application
