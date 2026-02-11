@@ -6,16 +6,30 @@ elora.db
 *.sqlite
 *.sqlite3
 
+# (Optional) logs / exports
+# *.log
+# *.csv
+# *.xlsx
+# *.png
+# *.jpg
+
 # -----------------------
 # Python env / caches
 # -----------------------
 .venv/
 venv/
+
+# Python bytecode / caches
 __pycache__/
+*.py[cod]
+*$py.class
+
+# Test / type-check caches
 .pytest_cache/
-*.pyc
-*.pyo
-*.pyd
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
 
 # -----------------------
 # OS / IDE
