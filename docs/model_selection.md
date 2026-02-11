@@ -1,44 +1,33 @@
-# Model Selection and Training Evidence
+# Model Selection
 
-## Objective
-ELORA predicts obesity risk as a **multi-class classification** problem using the Obesity Risk dataset.
-To reduce the impact of class imbalance across obesity levels, the main metric reported is **Macro-F1**.
+## Goal
+Select a multi-class model that performs well on obesity-level classification while staying practical for a local-first demo.
 
-## Baseline Model Comparison
-I compared multiple baseline models using the same data split and preprocessing pipeline:
+## Baseline Comparison
+Several classifiers were compared using a consistent preprocessing pipeline:
+- Logistic Regression
+- K-Nearest Neighbours (KNN)
+- Gradient Boosting (GB)
+- Random Forest (RF)
 
-| Model | Accuracy | Macro-F1 |
-|---|---:|---:|
-| Logistic Regression | 0.854 | 0.837 |
-| Random Forest (baseline) | 0.882 | 0.869 |
-| Gradient Boosting | **0.893** | **0.881** |
-| KNN | 0.840 | 0.822 |
+## Metric Choice
+**Macro-F1** is used as the primary metric because it treats each class equally and is more informative than accuracy when class sizes differ.
 
-**Result:** Gradient Boosting achieved the best baseline Macro-F1 (0.881). Random Forest was close and is easier to deploy and integrate into a local-first web prototype.
+## Final Choice: Random Forest
+Random Forest was selected because:
+- It achieved strong Macro-F1 and accuracy in baseline testing.
+- It is robust for mixed numeric + categorical inputs after one-hot encoding.
+- It is stable and easy to deploy using a scikit-learn Pipeline (`preprocess + classifier`).
 
-## Hyperparameter Tuning (Random Forest)
-Random Forest was tuned using **GridSearchCV (3-fold)** to optimise **Macro-F1**:
+## Hyperparameter Tuning
+A `GridSearchCV` was used to tune key RF parameters (e.g., depth, features, split rules, estimators) with:
+- scoring = `f1_macro`
+- cross-validation (3-fold)
 
-- Total candidates: 24 (72 fits)
-- Best parameters:
-  - `max_depth`: None
-  - `max_features`: "sqrt"
-  - `min_samples_split`: 5
-  - `n_estimators`: 200
-- Best CV Macro-F1: **0.865**
+## Output Artifact
+The final trained pipeline is exported as:
+- `app/ml/obesity_model.joblib`
 
-## Test Set Performance (After Grid Search)
-On the held-out test set, the tuned Random Forest achieved:
-
-- **Accuracy:** 0.887
-- **Macro-F1:** 0.875
-
-The classification report shows strong performance across most classes (e.g., Obesity Type II and III), with weaker performance mainly on borderline “Overweight” categories, which is expected due to overlapping feature distributions.
-
-## Reproducibility Artifact
-The trained model is saved as a scikit-learn pipeline:
-
-- File: `app/ml/obesity_model.joblib`
-- Verified load: `sklearn.pipeline.Pipeline` (`loaded ok`)
-
-Training logs are stored in: `docs/evidence/ml_train_output.txt`.
+## Limitations (Prototype)
+- The 7-feature schema is a simplified subset of the dataset.
+- Results are for educational demonstration, not medical diagnosis.
