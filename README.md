@@ -71,19 +71,25 @@ Once initialized, the application is accessible at:
 To retrain the machine learning model based on the dataset provided in `app/data/`:
 
 ```bash
-python -m app.ml.train_obesity_model
+python app/ml/train_obesity_model.py
+
+Training log evidence (optional): `docs/evidence/ml_train_output.txt`
+
 ```
 
-## System Screenshots
+## Evidence (Screenshots)
 
-| **Hybrid Risk Assessment** | **Trend Visualization** |
-|:---:|:---:|
-|  |  |
-| *Visual representation of the fused risk score ($0.7P + 0.3R$)* | *Interactive dual-axis charting using ECharts* |
+All screenshots and proof files are stored in: `docs/evidence/`
 
-| **Data Entry Interface** | **System Architecture** |
-|:---:|:---:|
-|  |  |
+Recommended items:
+- `01_record_today.png` — Record Today (submitted preview)
+- `02_history.png` — History table (with records)
+- `03_trends_last7.png` — Trends page (`/trends?n=7`)
+- `04_assessment_hybrid.png` — Assessment (hybrid score + formula visible)
+- `05_privacy.png` — Privacy page
+- `06_export_download.png` — CSV export download in browser
+- `07_export_opened.png` — CSV opened in Excel (columns visible)
+- `ml_train_output.txt` — ML training output log
 
 ## Project Structure
 
@@ -109,5 +115,3 @@ This project is an academic prototype intended for educational and research purp
 
 Copyright © 2025 Yimiao Hao. All Rights Reserved.
 
-```
-```
