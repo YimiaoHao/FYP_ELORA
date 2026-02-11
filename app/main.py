@@ -138,6 +138,10 @@ async def record_today_submit(
     if height_m > 0:
         bmi = round(weight_kg / (height_m ** 2), 1)
 
+    # 统一 gender 存储口径：Male/Female/Other（兼容旧 M/F/O）
+    gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+    gender = gender_map.get(gender, gender)
+
     # 写入数据库
     record = models.Record(
         date=dt.date.fromisoformat(date),
@@ -272,7 +276,7 @@ async def export_history(db: Session = Depends(get_db)):
 @app.get("/trends", response_class=HTMLResponse)
 async def trends(
     request: Request,
-    n: int = Query(7, ge=1, le=365),   # 默认 7 条，最大允许 365
+    n: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
     """
@@ -298,8 +302,6 @@ async def trends(
             "n": n,
         },
     )
-
-
 
 
 @app.get("/assessment", response_class=HTMLResponse)

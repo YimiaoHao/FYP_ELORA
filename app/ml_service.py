@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import joblib
 import pandas as pd
 
-# 模型文件路径：app/ml/obesity_model.joblib
+# Model file path: app/ml/obesity_model.joblib
 MODEL_PATH = Path(__file__).resolve().parent / "ml" / "obesity_model.joblib"
 _model = None
 
@@ -30,52 +30,116 @@ def load_model():
     return _model
 
 
-def _norm_gender(g: str) -> str:
-    g = (g or "").strip().lower()
-    if g.startswith("m") or g == "male":
+# --------- Normalizers (match training) ---------
+def normalize_gender_app(v) -> str:
+    """
+    Normalize app gender to training format: 'Male'/'Female'.
+    Accepts: F/M/O, female/male, 0/1, true/false, yes/no.
+    """
+    if v is None:
+        return "Female"
+    s = str(v).strip().lower()
+    if s in {"m", "male", "1", "true", "y", "yes"}:
         return "Male"
-    # O / other 也先映射到 Female，避免模型没见过类别
+    if s in {"f", "female", "0", "false", "n", "no"}:
+        return "Female"
+    # unknown (e.g., 'o') -> fallback (pipeline ignores unknown categories, but keep stable)
     return "Female"
 
 
-def _norm_family_history(x: str) -> str:
-    s = (x or "").strip().lower()
-    return "Y" if s in ("y", "yes", "1", "true") else "N"
+def normalize_family_history(v) -> str:
+    """Normalize family history to training format: 'Y'/'N'."""
+    if v is None:
+        return "N"
+    s = str(v).strip().lower()
+    if s in {"y", "yes", "true", "1", "1.0"}:
+        return "Y"
+    if s in {"n", "no", "false", "0", "0.0"}:
+        return "N"
+    return "N"
 
 
-def _norm_activity_level(x: str) -> str:
-    s = (x or "").strip().lower()
-    if s in ("mid", "moderate"):
+def _norm_activity_level(x) -> str:
+    """Normalize activity level to: low/medium/high."""
+    if x is None:
         return "medium"
-    if s not in ("low", "medium", "high"):
+    s = str(x).strip().lower()
+    if s in {"mid", "moderate"}:
+        return "medium"
+    if s not in {"low", "medium", "high"}:
         return "medium"
     return s
+
+
+# --------- Safe numeric parsers ---------
+def _to_int(v, default: int) -> int:
+    if v is None or v == "":
+        return default
+    try:
+        return int(float(v))
+    except Exception:
+        return default
+
+
+def _to_float(v, default: float) -> float:
+    if v is None or v == "":
+        return default
+    try:
+        return float(v)
+    except Exception:
+        return default
 
 
 def record_to_features(record) -> pd.DataFrame:
     """
     Map a Record (or record-like object) to the 7-feature DataFrame
     that matches train_obesity_model.py.
-    """
-    age = int(getattr(record, "age", 25) or 25)
-    gender = _norm_gender(getattr(record, "gender", "F"))
-    height_m = float(getattr(record, "height_m", 1.65) or 1.65)
-    weight_kg = float(getattr(record, "weight_kg", 60.0) or 60.0)
-    family_history = _norm_family_history(getattr(record, "family_history", "N"))
-    activity_level = _norm_activity_level(getattr(record, "activity_level", "medium"))
-    water_ml = int(getattr(record, "water_ml", 1500) or 1500)
 
-    X = pd.DataFrame(
-        [{
-            "age": age,
-            "gender": gender,
-            "height_m": height_m,
-            "weight_kg": weight_kg,
-            "family_history": family_history,
-            "activity_level": activity_level,
-            "water_ml": water_ml,
-        }]
+    Expected canonical columns:
+    age, gender, height_m, weight_kg, family_history, activity_level, water_ml
+    """
+    age = _to_int(getattr(record, "age", None), default=25)
+
+    gender_raw = getattr(record, "gender", None)
+    gender = normalize_gender_app(gender_raw if gender_raw is not None else "F")
+
+    height_m = _to_float(getattr(record, "height_m", None), default=1.65)
+    weight_kg = _to_float(getattr(record, "weight_kg", None), default=60.0)
+
+    # Support legacy field name: family_hist
+    fh_raw = (
+        getattr(record, "family_history", None)
+        or getattr(record, "family_hist", None)
+        or "N"
     )
+    family_history = normalize_family_history(fh_raw)
+
+    activity_raw = (
+        getattr(record, "activity_level", None)
+        or getattr(record, "activity", None)
+        or "medium"
+    )
+    activity_level = _norm_activity_level(activity_raw)
+
+    # Support possible legacy names
+    water_raw = (
+        getattr(record, "water_ml", None)
+        or getattr(record, "water", None)
+        or getattr(record, "water_intake", None)
+        or 1500
+    )
+    water_ml = _to_int(water_raw, default=1500)
+
+    X = pd.DataFrame([{
+        "age": age,
+        "gender": gender,
+        "height_m": height_m,
+        "weight_kg": weight_kg,
+        "family_history": family_history,
+        "activity_level": activity_level,
+        "water_ml": water_ml,
+    }])
+
     return X
 
 
@@ -83,14 +147,12 @@ def predict_label(features_df: pd.DataFrame) -> Tuple[str, float]:
     """Return (label, confidence 0~1)."""
     model = load_model()
 
-    # Pipeline 分类器通常支持 predict_proba
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(features_df)[0]
         classes = model.classes_
         idx = int(proba.argmax())
         return str(classes[idx]), float(proba[idx])
 
-    # 兜底：没有 proba 就返回 0.0
     pred = model.predict(features_df)[0]
     return str(pred), 0.0
 
