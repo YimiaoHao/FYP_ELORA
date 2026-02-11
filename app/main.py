@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Query, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from starlette import status
 from fastapi.staticfiles import StaticFiles
@@ -270,24 +270,35 @@ async def export_history(db: Session = Depends(get_db)):
     )
 
 @app.get("/trends", response_class=HTMLResponse)
-async def trends(request: Request, db: Session = Depends(get_db)):
+async def trends(
+    request: Request,
+    n: int = Query(7, ge=1, le=365),   # 默认 7 条，最大允许 365
+    db: Session = Depends(get_db),
+):
     """
-    最近记录的体重 & BMI 趋势
+    最近 N 条记录的体重 & BMI 趋势（n=7 / n=30）
     """
-    records = (
+    # 先按“最新”倒序取最近 N 条
+    records_desc = (
         db.query(models.Record)
-        .order_by(models.Record.date.asc(), models.Record.id.asc())
-        .limit(30)
+        .order_by(models.Record.date.desc(), models.Record.id.desc())
+        .limit(n)
         .all()
     )
+
+    # 图表希望时间从旧到新展示，所以反转回来
+    records = list(reversed(records_desc))
+
     return templates.TemplateResponse(
         "trends.html",
         {
             "request": request,
             "title": "Trends",
             "records": records,
+            "n": n,
         },
     )
+
 
 
 

@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Trends (Weight & BMI)</h2>
+<h2>Trends (Weight & BMI) — Last {{ n }} records</h2>
+
+<p>
+    <a href="/trends?n=7">{% if n == 7 %}<strong>Last 7</strong>{% else %}Last 7{% endif %}</a>
+    |
+    <a href="/trends?n=30">{% if n == 30 %}<strong>Last 30</strong>{% else %}Last 30{% endif %}</a>
+</p>
 
 {% if not records %}
 <p>No data yet. Please add some records in "Record Today".</p>
