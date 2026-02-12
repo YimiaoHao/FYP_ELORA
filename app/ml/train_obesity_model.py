@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any
 
 import joblib
 import pandas as pd
+import numpy as np
+
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, f1_score, classification_report
@@ -12,17 +14,19 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.neural_network import MLPClassifier
 
 
-# 当前文件夹：.../app/ml
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR.parent / "data" / "obesity_level.csv"
 MODEL_PATH = BASE_DIR / "obesity_model.joblib"
 
 RANDOM_STATE = 42
 
-# 想先跑快一点就改成 False（先得到模型文件再说）
-RUN_GRID_SEARCH = True
+#是否运行 GridSearch（会比较慢）。
+RUN_GRID_SEARCH = False
 
 
 def _normalize_gender(v) -> str:
@@ -34,7 +38,6 @@ def _normalize_gender(v) -> str:
         return "Male"
     if s in {"f", "female", "0", "false", "n"}:
         return "Female"
-    # 兜底：首字母大写
     return str(v).strip().title() or "Female"
 
 
@@ -57,29 +60,12 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
 
     df = pd.read_csv(csv_path)
 
-    # ========= 1) 检查原始数据集需要的列是否存在 =========
-    required_cols = {
-        "Age",
-        "Gender",
-        "Height",
-        "Weight",
-        "family_history_with_overweight",
-        "FAF",
-        "CH2O",
-    }
+    required_cols = {"Age", "Gender", "Height", "Weight", "family_history_with_overweight", "FAF", "CH2O"}
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns in CSV: {missing}")
 
-    # ========= 2) 自动识别标签列名称 =========
-    label_candidates = [
-        "NObeyesdad",
-        "obesity_level",
-        "Obesity_Level",
-        "target",
-        "label",
-        "0be1dad",
-    ]
+    label_candidates = ["NObeyesdad", "obesity_level", "Obesity_Level", "target", "label", "0be1dad"]
     label_col = next((c for c in label_candidates if c in df.columns), None)
     if label_col is None:
         raise ValueError(
@@ -87,37 +73,27 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
             f"available columns: {list(df.columns)}"
         )
 
-    # ========= 3) 构造与 Web/API 一致的 7 个特征 =========
     df2 = pd.DataFrame()
 
-    # Age：你的数据集里本来就大量是 float（小数），不要强转 Int64！
     df2["age"] = pd.to_numeric(df["Age"], errors="coerce")
-
     df2["gender"] = df["Gender"].apply(_normalize_gender)
 
-    # Height/Weight：米 / 公斤（float）
     df2["height_m"] = pd.to_numeric(df["Height"], errors="coerce")
     df2["weight_kg"] = pd.to_numeric(df["Weight"], errors="coerce")
 
-    # family_history：数据集是 0/1（也可能混杂 yes/no），统一成 Y/N，且保证不是全空
     fh_raw = df["family_history_with_overweight"].apply(_normalize_yes_no_to_YN)
-
     if fh_raw.isna().any():
-        # 少量缺失用众数补齐（让模型真正用上这列）
         mode = fh_raw.dropna().mode()
         fill_value = mode.iloc[0] if not mode.empty else "N"
         fh_raw = fh_raw.fillna(fill_value)
 
-    # 硬校验：避免你又把这列搞成全空
     if fh_raw.isna().all():
         raise ValueError("family_history became ALL-NaN after mapping. Check dataset values.")
     if fh_raw.nunique(dropna=True) < 2:
-        # 不是错误也能训练，但说明这列没信息；这里给你直接提示
         print("[WARN] family_history has <2 unique values. It may not be informative.")
 
     df2["family_history"] = fh_raw
 
-    # activity_level：由 FAF 分档
     def _map_faf_to_activity(x) -> str:
         try:
             v = float(x)
@@ -131,17 +107,11 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
             return "high"
 
     df2["activity_level"] = df["FAF"].apply(_map_faf_to_activity)
-
-    # water_ml：CH2O（升）-> ml（保持数值即可，不强转 int 也没问题）
     df2["water_ml"] = pd.to_numeric(df["CH2O"], errors="coerce") * 1000.0
 
-    # ========= 4) 标签列 =========
     y = df[label_col].astype(str).str.strip()
-
-    # 修正脏标签
     y = y.replace({"0rmal_Weight": "Normal_Weight"})
 
-    # 如果还有以 0 开头的奇怪标签，直接报错提醒你
     bad = y[y.str.contains(r"^0", regex=True)].unique()
     if len(bad) > 0:
         raise ValueError(f"Found suspicious labels: {bad}")
@@ -173,6 +143,29 @@ def build_preprocessor(numeric_features, categorical_features) -> ColumnTransfor
     )
 
 
+def confidence_stats(pipe: Pipeline, X_test) -> Dict[str, float]:
+    """
+    计算测试集上的 top-class confidence（最大类别概率）的统计值。
+    confidence = max(p(class_i|x))
+    """
+    if not hasattr(pipe, "predict_proba"):
+        return {
+            "conf_mean": float("nan"),
+            "conf_p50": float("nan"),
+            "conf_min": float("nan"),
+            "conf_max": float("nan"),
+        }
+
+    proba = pipe.predict_proba(X_test)
+    top = np.max(proba, axis=1)
+    return {
+        "conf_mean": float(np.mean(top)),
+        "conf_p50": float(np.median(top)),
+        "conf_min": float(np.min(top)),
+        "conf_max": float(np.max(top)),
+    }
+
+
 def train_and_evaluate_model(
     name: str,
     classifier,
@@ -182,7 +175,7 @@ def train_and_evaluate_model(
     y_train,
     y_test,
 ) -> Dict[str, Any]:
-    """训练单个模型并在测试集上评估。"""
+    """训练单个模型并在测试集上评估（含 top-class confidence）。"""
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", classifier)])
 
     pipe.fit(X_train, y_train)
@@ -190,35 +183,80 @@ def train_and_evaluate_model(
 
     acc = accuracy_score(y_test, y_pred)
     macro_f1 = f1_score(y_test, y_pred, average="macro")
+    conf = confidence_stats(pipe, X_test)
 
     print(f"=== {name} ===")
-    print(f"Accuracy  : {acc:.3f}")
-    print(f"Macro F1  : {macro_f1:.3f}")
+    print(f"Accuracy    : {acc:.3f}")
+    print(f"Macro F1    : {macro_f1:.3f}")
+    print(f"Conf(mean)  : {conf['conf_mean']:.3f}")
+    print(f"Conf(p50)   : {conf['conf_p50']:.3f}")
     print()
 
-    return {"name": name, "model": pipe, "accuracy": acc, "macro_f1": macro_f1}
+    return {
+        "name": name,
+        "model": pipe,
+        "accuracy": acc,
+        "macro_f1": macro_f1,
+        **conf,
+    }
 
 
 def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> Dict[str, Any]:
-    """对几个候选模型做基线对比。"""
+    """对候选模型做基准对比，并保存结果到 CSV。"""
     candidates = {
+        # 你已有的
         "logreg": LogisticRegression(max_iter=1000),
-        "rf": RandomForestClassifier(n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1),
-        "gb": GradientBoostingClassifier(random_state=RANDOM_STATE),
         "knn": KNeighborsClassifier(n_neighbors=9),
+        "gb": GradientBoostingClassifier(random_state=RANDOM_STATE),
+        "rf": RandomForestClassifier(n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1),
+
+        # 导师点名
+        "dt": DecisionTreeClassifier(random_state=RANDOM_STATE),
+        "svm_rbf": SVC(kernel="rbf", C=10.0, gamma="scale", probability=True, random_state=RANDOM_STATE),
+        "mlp": MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=600, random_state=RANDOM_STATE),
     }
 
-    results = []
-    print("=== Baseline model comparison ===")
+    results: List[Dict[str, Any]] = []
+    print("=== Baseline model comparison (same split & same preprocessing) ===")
+
     for name, clf in candidates.items():
         results.append(train_and_evaluate_model(name, clf, preprocessor, X_train, X_test, y_train, y_test))
 
-    best = max(results, key=lambda r: (r["macro_f1"], r["accuracy"]))
+    results_sorted = sorted(results, key=lambda r: (r["macro_f1"], r["accuracy"], r["conf_mean"]), reverse=True)
+
+    print("=== Summary (sorted) ===")
+    for r in results_sorted:
+        print(
+            f"{r['name']:8s} | MacroF1={r['macro_f1']:.3f} | Acc={r['accuracy']:.3f} | "
+            f"ConfMean={r['conf_mean']:.3f} | ConfP50={r['conf_p50']:.3f}"
+        )
+    print()
+
+    out_csv = BASE_DIR / "benchmark_results.csv"
+    df_out = pd.DataFrame(
+        [
+            {
+                "model": r["name"],
+                "macro_f1": r["macro_f1"],
+                "accuracy": r["accuracy"],
+                "conf_mean": r["conf_mean"],
+                "conf_p50": r["conf_p50"],
+                "conf_min": r["conf_min"],
+                "conf_max": r["conf_max"],
+            }
+            for r in results_sorted
+        ]
+    )
+    df_out.to_csv(out_csv, index=False, encoding="utf-8-sig")
+    print(f"[OK] Benchmark CSV saved to: {out_csv}")
+
+    best = results_sorted[0]
     print(
         f"Best baseline model: {best['name']} "
-        f"(Accuracy={best['accuracy']:.3f}, Macro-F1={best['macro_f1']:.3f})"
+        f"(Macro-F1={best['macro_f1']:.3f}, Acc={best['accuracy']:.3f}, ConfMean={best['conf_mean']:.3f})"
     )
     print()
+
     return best
 
 
@@ -227,7 +265,6 @@ def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) ->
     rf = RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1)
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", rf)])
 
-    # 这里稍微收敛一下搜索空间，避免你觉得“跑不到头”
     param_grid = {
         "clf__n_estimators": [200, 400],
         "clf__max_depth": [None, 10, 20],
@@ -240,7 +277,7 @@ def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) ->
         param_grid=param_grid,
         scoring="f1_macro",
         cv=3,
-        n_jobs=1,   # Windows 上更稳；想快可改 -1
+        n_jobs=1,
         verbose=1,
     )
 
@@ -286,21 +323,15 @@ def main():
     preprocessor = build_preprocessor(numeric_features, categorical_features)
 
     # 1) 多模型基线对比
-    _ = compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test)
+    best = compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test)
 
-    # 2) GridSearch（可选）
+    # 2) GridSearch
     if RUN_GRID_SEARCH:
         final_model = grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test)
     else:
-        # 不跑 GridSearch 时，就用一个还不错的 RF 直接训练
-        final_model = Pipeline(
-            steps=[
-                ("preprocess", preprocessor),
-                ("clf", RandomForestClassifier(n_estimators=300, random_state=RANDOM_STATE, n_jobs=-1)),
-            ]
-        )
-        final_model.fit(X_train, y_train)
-        
+        # 不跑 GridSearch 时，直接用 benchmark 最优模型作为最终模型（满足“选最优模型”）
+        final_model = best["model"]
+
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(final_model, MODEL_PATH)
     print(f"Model saved to: {MODEL_PATH}")

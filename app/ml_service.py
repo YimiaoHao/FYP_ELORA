@@ -1,17 +1,7 @@
-# app/ml_service.py
-"""
-Single source of truth for ML inference.
-
-- record_to_features(record) -> DataFrame with 7 columns (matches training)
-- predict_label(df) -> (label, confidence)
-- predict_obesity_level(record)
-- predict_obesity_level_from_fields(...)
-"""
-
 from pathlib import Path
 from typing import Tuple
 from types import SimpleNamespace
-
+import os
 import joblib
 import pandas as pd
 
@@ -27,6 +17,8 @@ def load_model():
         if not MODEL_PATH.exists():
             raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
         _model = joblib.load(MODEL_PATH)
+        if os.getenv("ELORA_DEBUG_MODEL", "0") == "1":
+            print("Loaded model classifier:", type(_model.named_steps["clf"]).__name__)
     return _model
 
 

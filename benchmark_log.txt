@@ -1,0 +1,57 @@
+Loading data from: D:\SETU\FYP_project\ELORA\app\data\obesity_level.csv
+=== Baseline model comparison (same split & same preprocessing) ===
+=== logreg ===
+Accuracy    : 0.854
+Macro F1    : 0.837
+Conf(mean)  : 0.783
+Conf(p50)   : 0.818
+
+=== knn ===
+Accuracy    : 0.840
+Macro F1    : 0.822
+Conf(mean)  : 0.842
+Conf(p50)   : 0.889
+
+=== gb ===
+Accuracy    : 0.893
+Macro F1    : 0.881
+Conf(mean)  : 0.881
+Conf(p50)   : 0.947
+
+=== rf ===
+Accuracy    : 0.882
+Macro F1    : 0.869
+Conf(mean)  : 0.867
+Conf(p50)   : 0.950
+
+=== dt ===
+Accuracy    : 0.841
+Macro F1    : 0.824
+Conf(mean)  : 0.989
+Conf(p50)   : 1.000
+
+=== svm_rbf ===
+Accuracy    : 0.874
+Macro F1    : 0.860
+Conf(mean)  : 0.852
+Conf(p50)   : 0.914
+
+=== mlp ===
+Accuracy    : 0.879
+Macro F1    : 0.866
+Conf(mean)  : 0.882
+Conf(p50)   : 0.946
+
+=== Summary (sorted) ===
+gb       | MacroF1=0.881 | Acc=0.893 | ConfMean=0.881 | ConfP50=0.947
+rf       | MacroF1=0.869 | Acc=0.882 | ConfMean=0.867 | ConfP50=0.950
+mlp      | MacroF1=0.866 | Acc=0.879 | ConfMean=0.882 | ConfP50=0.946
+svm_rbf  | MacroF1=0.860 | Acc=0.874 | ConfMean=0.852 | ConfP50=0.914
+logreg   | MacroF1=0.837 | Acc=0.854 | ConfMean=0.783 | ConfP50=0.818
+dt       | MacroF1=0.824 | Acc=0.841 | ConfMean=0.989 | ConfP50=1.000
+knn      | MacroF1=0.822 | Acc=0.840 | ConfMean=0.842 | ConfP50=0.889
+
+[OK] Benchmark CSV saved to: D:\SETU\FYP_project\ELORA\app\ml\benchmark_results.csv
+Best baseline model: gb (Macro-F1=0.881, Acc=0.893, ConfMean=0.881)
+
+Model saved to: D:\SETU\FYP_project\ELORA\app\ml\obesity_model.joblib
