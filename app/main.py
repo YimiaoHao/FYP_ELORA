@@ -9,7 +9,7 @@ import datetime as dt
 import io
 import csv
 
-# 给 /api/predict 用的输入 / 输出模型
+# Input/output model for /api/predict
 from .schemas import RecordInput, PredictionResponse
 
 from .ml_service import predict_obesity_level, predict_obesity_level_from_fields
@@ -18,38 +18,29 @@ from .database import Base, engine, get_db
 from . import models
 
 
-# 当前文件所在目录：.../app
 BASE_DIR = Path(__file__).resolve().parent
 
-# FastAPI 实例，名字必须叫 app
 app = FastAPI(title="ELORA - Obesity Risk Prototype")
 
-# 创建数据库表（如果不存在）
 Base.metadata.create_all(bind=engine)
 
-# 静态文件目录 /static
 app.mount(
     "/static",
     StaticFiles(directory=BASE_DIR / "static"),
     name="static",
 )
 
-# 模板目录
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 @app.post("/api/predict", response_model=PredictionResponse)
 async def api_predict(payload: RecordInput):
-    """
-    JSON 接口：
-    - 输入：一条 RecordInput
-    - 输出：BMI + BMI 类别 + Risk score + 模型预测等级 + 置信度
-    """
-    # 1) 计算 BMI + BMI 评分
+
+    # Calculate BMI + BMI Score
     bmi = round(payload.weight_kg / (payload.height_m ** 2), 1)
     bmi_category, risk_score = classify_bmi(bmi)
 
-    # 2) 调用“字段版本”的模型预测
+    # 2) Call the model prediction of "field version"
     model_label = None
     model_confidence = None
     try:
@@ -65,7 +56,7 @@ async def api_predict(payload: RecordInput):
     except Exception as e:
         print("API /api/predict ML error:", e)
 
-    # 3) 返回统一的响应模型
+    # Return a unified response model
     return PredictionResponse(
         bmi=bmi,
         bmi_category=bmi_category,
@@ -78,9 +69,7 @@ async def api_predict(payload: RecordInput):
 
 @app.get("/", response_class=HTMLResponse)
 async def read_home(request: Request):
-    """
-    首页
-    """
+
     return templates.TemplateResponse(
         "home.html",
         {
@@ -91,9 +80,7 @@ async def read_home(request: Request):
 
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy(request: Request):
-    """
-    显示一页更详细的隐私说明，便于答辩和报告引用。
-    """
+
     return templates.TemplateResponse(
         "privacy.html",
         {
@@ -105,9 +92,7 @@ async def privacy(request: Request):
 
 @app.get("/record-today", response_class=HTMLResponse)
 async def record_today_form(request: Request):
-    """
-    显示“记录今日数据”表单（GET）
-    """
+
     return templates.TemplateResponse(
         "record_today.html",
         {
@@ -131,18 +116,16 @@ async def record_today_submit(
     water_ml: int = Form(...),
     db: Session = Depends(get_db),
 ):
-    """
-    接收表单（POST），计算 BMI，并保存到 SQLite。
-    """
+
     bmi = None
     if height_m > 0:
         bmi = round(weight_kg / (height_m ** 2), 1)
 
-    # 统一 gender 存储口径：Male/Female/Other（兼容旧 M/F/O）
+    # Unified gender storage caliber: Male/Female/Other (compatible with old M/F/O)
     gender_map = {"M": "Male", "F": "Female", "O": "Other"}
     gender = gender_map.get(gender, gender)
 
-    # 写入数据库
+    # Write to database
     record = models.Record(
         date=dt.date.fromisoformat(date),
         age=age,
@@ -181,9 +164,7 @@ async def record_today_submit(
     )
 @app.get("/history", response_class=HTMLResponse)
 async def history(request: Request, db: Session = Depends(get_db)):
-    """
-    查看最近的记录（例如最近 30 条）
-    """
+
     records = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
@@ -200,9 +181,7 @@ async def history(request: Request, db: Session = Depends(get_db)):
     )
 @app.post("/history/clear")
 async def clear_history(request: Request, db: Session = Depends(get_db)):
-    """
-    清空所有历史记录，然后重定向回 /history
-    """
+
     db.query(models.Record).delete()
     db.commit()
     return RedirectResponse(
@@ -212,22 +191,16 @@ async def clear_history(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/export")
 async def export_history(db: Session = Depends(get_db)):
-    """
-    导出所有历史记录为 CSV 文件。
-    注意：这是本地原型，只在你自己的机器上跑，不会上传到任何远程服务器。
-    """
-    # 1. 查询所有记录（你也可以只导出最近 365 条，看自己需求）
+
     records = (
         db.query(models.Record)
         .order_by(models.Record.date.asc(), models.Record.id.asc())
         .all()
     )
 
-    # 2. 把数据写入内存中的 CSV
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # 表头，根据你的 Record 字段来
     writer.writerow(
         [
             "id",
@@ -243,7 +216,6 @@ async def export_history(db: Session = Depends(get_db)):
         ]
     )
 
-    # 每一行记录
     for r in records:
         writer.writerow(
             [
@@ -260,10 +232,8 @@ async def export_history(db: Session = Depends(get_db)):
             ]
         )
 
-    # 把指针重置到开头
     output.seek(0)
 
-    # 3. 用 StreamingResponse 返回，浏览器会当成文件下载
     headers = {
         "Content-Disposition": 'attachment; filename="elora_history_export.csv"'
     }
@@ -279,10 +249,7 @@ async def trends(
     n: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
-    """
-    最近 N 条记录的体重 & BMI 趋势（n=7 / n=30）
-    """
-    # 先按“最新”倒序取最近 N 条
+
     records_desc = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
@@ -290,7 +257,6 @@ async def trends(
         .all()
     )
 
-    # 图表希望时间从旧到新展示，所以反转回来
     records = list(reversed(records_desc))
 
     return templates.TemplateResponse(
@@ -306,18 +272,13 @@ async def trends(
 
 @app.get("/assessment", response_class=HTMLResponse)
 async def assessment(request: Request, db: Session = Depends(get_db)):
-    """
-    使用最新一条记录做 BMI + ML 评估
-    """
 
-    # 1. 取“最新一条记录”（只按日期 + id 倒序，不做任何奇怪的过滤）
     record = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
         .first()
     )
 
-    # 如果根本没有记录，就给模板 has_record=False
     if record is None:
         return templates.TemplateResponse(
             "assessment.html",
@@ -328,7 +289,6 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
             },
         )
 
-    # 2. 计算 BMI
     if record.bmi is not None:
         bmi = round(record.bmi, 1)
     elif record.height_m and record.height_m > 0:
@@ -339,7 +299,6 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
     bmi_category, risk_score = classify_bmi(bmi)
     tips = generate_tips(record, bmi_category)
 
-    # 3. 调用 ML 模型（如果出错就只显示 BMI，那也不影响页面）
     ml_available = False
     model_label = None
     model_confidence = 0.0
@@ -351,20 +310,17 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
         print("ML prediction error:", e)
         ml_available = False
 
-    # 规则分数 (risk_score) 是 0-100，需要除以 100 归一化到 0-1
+    # The rule score (risk_score) is 0-100 and needs to be divided by 100 to normalize to 0-1
     normalized_rules_score = risk_score / 100.0
     
-    # 如果 ML 可用，使用混合公式：0.7 * ML + 0.3 * Rules
+    # If ML is available, use the hybrid formula: 0.7 *ML + 0.3 *Rules
     if ml_available:
         final_risk_index = (0.7 * model_confidence) + (0.3 * normalized_rules_score)
     else:
-        # 如果 ML 挂了，就只用规则分数兜底
         final_risk_index = normalized_rules_score
-    
-    # 转成百分比方便显示 (例如 0.65 -> 65)
+
     final_risk_percent = int(final_risk_index * 100)
 
-    # 4. 正常返回模板，has_record=True
     return templates.TemplateResponse(
         "assessment.html",
         {

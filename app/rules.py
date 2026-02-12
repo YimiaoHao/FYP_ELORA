@@ -31,13 +31,9 @@ def classify_bmi(bmi: float) -> Tuple[str, int]:
 
 
 def generate_tips(record, bmi_category: str) -> List[str]:
-    """
-    根据 BMI 分类 + 记录内容，生成几条“个性化建议”（规则版）
-    注意：这里只是 demo，不是医疗建议。在报告中要明确说明。
-    """
     tips: List[str] = []
 
-    # ------ 1. BMI 相关建议 ------
+    # Related suggestions
     if bmi_category.startswith("Obesity") or bmi_category == "Overweight":
         tips.append(
             "Your BMI is in the overweight/obesity range. Consider gradually reducing sugary drinks and high-calorie snacks."
@@ -56,7 +52,7 @@ def generate_tips(record, bmi_category: str) -> List[str]:
             "Your BMI is in the normal range. Try to maintain a stable weight with balanced meals and regular activity."
         )
 
-    # ------ 2. 活动水平相关建议 ------
+    #  Activity level recommendations
     level = (getattr(record, "activity_level", "") or "").lower()
     if level == "low":
         tips.append(
@@ -71,7 +67,7 @@ def generate_tips(record, bmi_category: str) -> List[str]:
             "You reported a high activity level. Ensure you also get enough recovery and sleep to support your health."
         )
 
-    # ------ 3. 饮水量相关建议 ------
+    # Advice on water intake
     water_ml = getattr(record, "water_ml", None)
     if isinstance(water_ml, int):
         if water_ml < 1500:
@@ -83,14 +79,14 @@ def generate_tips(record, bmi_category: str) -> List[str]:
                 "You reported a relatively high water intake today. Make sure this matches any advice from your clinician."
             )
 
-    # ------ 4. 家族史相关建议 ------
+    # Advice on water intake
     family_history = (getattr(record, "family_history", "") or "").upper()
     if family_history.startswith("Y"):
         tips.append(
             "You reported a family history of overweight/obesity. Maintaining regular activity and balanced diet is especially important."
         )
 
-    # 可以根据需要去重（防止重复文案）
+    # Remove duplicates as needed
     seen = set()
     unique_tips: List[str] = []
     for t in tips:

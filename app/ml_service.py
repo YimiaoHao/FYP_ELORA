@@ -22,7 +22,7 @@ def load_model():
     return _model
 
 
-# --------- Normalizers (match training) ---------
+# Normalizers
 def normalize_gender_app(v) -> str:
     """
     Normalize app gender to training format: 'Male'/'Female'.
@@ -35,7 +35,6 @@ def normalize_gender_app(v) -> str:
         return "Male"
     if s in {"f", "female", "0", "false", "n", "no"}:
         return "Female"
-    # unknown (e.g., 'o') -> fallback (pipeline ignores unknown categories, but keep stable)
     return "Female"
 
 
@@ -63,7 +62,7 @@ def _norm_activity_level(x) -> str:
     return s
 
 
-# --------- Safe numeric parsers ---------
+#  Safe numeric parsers
 def _to_int(v, default: int) -> int:
     if v is None or v == "":
         return default

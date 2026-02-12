@@ -25,12 +25,12 @@ MODEL_PATH = BASE_DIR / "obesity_model.joblib"
 
 RANDOM_STATE = 42
 
-#是否运行 GridSearch（会比较慢）。
+# Whether to run GridSearch.
 RUN_GRID_SEARCH = False
 
 
 def _normalize_gender(v) -> str:
-    """把各种性别输入统一为 'Male' / 'Female'（与 ml_service 口径一致）"""
+
     if pd.isna(v):
         return "Female"
     s = str(v).strip().lower()
@@ -42,7 +42,7 @@ def _normalize_gender(v) -> str:
 
 
 def _normalize_yes_no_to_YN(v):
-    """把 0/1, yes/no, true/false 等统一成 'Y'/'N'，无法识别则返回 None"""
+
     if pd.isna(v):
         return None
     s = str(v).strip().lower()
@@ -54,7 +54,7 @@ def _normalize_yes_no_to_YN(v):
 
 
 def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
-    """从数据集中抽取出和前端一致的 7 个特征，并自动识别标签列名称。"""
+
     if not csv_path.exists():
         raise FileNotFoundError(f"Dataset not found: {csv_path}")
 
@@ -120,7 +120,7 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
 
 
 def build_preprocessor(numeric_features, categorical_features) -> ColumnTransformer:
-    """构造数值 + 类别特征的预处理流水线。"""
+
     numeric_transformer = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
@@ -144,10 +144,7 @@ def build_preprocessor(numeric_features, categorical_features) -> ColumnTransfor
 
 
 def confidence_stats(pipe: Pipeline, X_test) -> Dict[str, float]:
-    """
-    计算测试集上的 top-class confidence（最大类别概率）的统计值。
-    confidence = max(p(class_i|x))
-    """
+
     if not hasattr(pipe, "predict_proba"):
         return {
             "conf_mean": float("nan"),
@@ -175,7 +172,7 @@ def train_and_evaluate_model(
     y_train,
     y_test,
 ) -> Dict[str, Any]:
-    """训练单个模型并在测试集上评估（含 top-class confidence）。"""
+
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", classifier)])
 
     pipe.fit(X_train, y_train)
@@ -202,15 +199,12 @@ def train_and_evaluate_model(
 
 
 def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> Dict[str, Any]:
-    """对候选模型做基准对比，并保存结果到 CSV。"""
+
     candidates = {
-        # 你已有的
         "logreg": LogisticRegression(max_iter=1000),
         "knn": KNeighborsClassifier(n_neighbors=9),
         "gb": GradientBoostingClassifier(random_state=RANDOM_STATE),
         "rf": RandomForestClassifier(n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1),
-
-        # 导师点名
         "dt": DecisionTreeClassifier(random_state=RANDOM_STATE),
         "svm_rbf": SVC(kernel="rbf", C=10.0, gamma="scale", probability=True, random_state=RANDOM_STATE),
         "mlp": MLPClassifier(hidden_layer_sizes=(64, 32), max_iter=600, random_state=RANDOM_STATE),
@@ -261,7 +255,6 @@ def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> 
 
 
 def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) -> Pipeline:
-    """对随机森林做 GridSearchCV 调参，优化 macro F1。"""
     rf = RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1)
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", rf)])
 
@@ -322,14 +315,15 @@ def main():
 
     preprocessor = build_preprocessor(numeric_features, categorical_features)
 
-    # 1) 多模型基线对比
+    # Multi-model baseline comparison
+
     best = compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test)
 
     # 2) GridSearch
     if RUN_GRID_SEARCH:
         final_model = grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test)
     else:
-        # 不跑 GridSearch 时，直接用 benchmark 最优模型作为最终模型（满足“选最优模型”）
+        # When GridSearch is not running, the benchmark optimal model is directly used as the final model (satisfying "select the optimal model")
         final_model = best["model"]
 
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
