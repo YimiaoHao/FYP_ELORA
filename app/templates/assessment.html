@@ -1,61 +1,81 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>Risk Assessment</h2>
 
-{% if not has_record %}
-<p>No records available yet. Please add at least one entry in "Record Today".</p>
-{% else %}
-
-<div style="background-color: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #2196F3;">
-    <h2 style="margin-top:0; color: #0d47a1;">Final Hybrid Risk Score: {{ final_risk_percent }}%</h2>
-    <p>
-        Calculated using ELORA Hybrid Algorithm: <br>
-        <code>Risk = 0.7 × Model_Prob + 0.3 × Rules_Score</code>
-    </p>
-    <div class="risk-bar-outer" style="height: 24px; background: #ccc;">
-        <div class="risk-bar-fill" style="width: {{ final_risk_percent }}%; background: #d32f2f;"></div>
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="pill">RISK</div>
+      <h2>Risk Assessment</h2>
+      <p class="sub">Hybrid score + BMI and model-based results (educational prototype).</p>
     </div>
-</div>
+  </div>
 
-<h3>Latest record ({{ record.date }})</h3>
-<ul>
-    <li>Age: {{ record.age }}</li>
-    <li>Gender: {{ record.gender }}</li>
-    <li>Height: {{ "%.2f"|format(record.height_m) }} m</li>
-    <li>Weight: {{ "%.1f"|format(record.weight_kg) }} kg</li>
-    <li>Activity level: {{ record.activity_level }}</li>
-    <li>Water today: {{ record.water_ml }} ml</li>
-</ul>
+  {% if not has_record %}
+    <div class="card"><p class="muted">No records available yet. Please add at least one entry in "Record".</p></div>
+  {% else %}
 
-<h3>Obesity risk (BMI-based prototype)</h3>
-<p><strong>BMI:</strong> {{ "%.1f"|format(bmi) }}</p>
-<p><strong>Category:</strong> {{ bmi_category }}</p>
+    <div class="grid g2">
+      <div class="card highlight">
+        <div class="pill">FINAL</div>
+        <h3>Final Hybrid Risk Score: {{ final_risk_percent }}%</h3>
+        <p class="muted">Risk = <code>0.7 × Model_Prob + 0.3 × Rules_Score</code></p>
+        <div class="risk-bar-outer" aria-label="final risk">
+          <div class="risk-bar-fill" style="width: {{ final_risk_percent }}%;"></div>
+        </div>
+        <p class="muted" style="margin-top:10px;">For lifestyle reference only — not medical advice.</p>
+      </div>
 
-<div class="risk-bar-outer">
-    <div class="risk-bar-fill" style="width: {{ risk_score }}%;"></div>
-</div>
-<p style="font-size: 12px; color:#666; margin-top:4px;">
-    Risk score (0–100): {{ risk_score }} (based on BMI only, demonstration version)
-</p>
+      <div class="card">
+        <div class="pill">LATEST</div>
+        <h3>Latest record ({{ record.date }})</h3>
+        <ul class="muted">
+          <li><b>Age:</b> {{ record.age }}</li>
+          <li><b>Gender:</b> {{ record.gender }}</li>
+          <li><b>Height:</b> {{ "%.2f"|format(record.height_m) }} m</li>
+          <li><b>Weight:</b> {{ "%.1f"|format(record.weight_kg) }} kg</li>
+          <li><b>Activity:</b> {{ record.activity_level }}</li>
+          <li><b>Water:</b> {{ record.water_ml }} ml</li>
+        </ul>
+      </div>
+    </div>
 
-<h3>Model-based assessment (data-mining prototype)</h3>
+    <div class="grid g2" style="margin-top:14px;">
+      <div class="card soft">
+        <div class="pill">BMI</div>
+        <h3>BMI-based prototype</h3>
+        <p><b>BMI:</b> {{ "%.1f"|format(bmi) }}</p>
+        <p><b>Category:</b> {{ bmi_category }}</p>
+        <div class="risk-bar-outer" aria-label="bmi risk">
+          <div class="risk-bar-fill" style="width: {{ risk_score }}%;"></div>
+        </div>
+        <p class="muted" style="margin-top:10px;">Risk score (0–100): {{ risk_score }} (BMI-only demo)</p>
+      </div>
 
-{% if ml_available %}
-    <p><strong>Predicted obesity level:</strong> {{ model_label }}</p>
-    <p><strong>Model confidence:</strong> {{ "%.0f"|format(model_confidence * 100) }}%</p>
-{% else %}
-    <p>Model prediction is currently unavailable.</p>
-{% endif %}
+      <div class="card soft">
+        <div class="pill">MODEL</div>
+        <h3>Model-based assessment</h3>
+        {% if ml_available %}
+          <p><b>Predicted obesity level:</b> {{ model_label }}</p>
+          <p><b>Model confidence:</b> {{ "%.0f"|format(model_confidence * 100) }}%</p>
+        {% else %}
+          <p class="muted">Model prediction is currently unavailable.</p>
+        {% endif %}
+      </div>
+    </div>
 
-{% if tips %}
-<h3>Personalised tips (demo)</h3>
-<ul>
-    {% for tip in tips %}
-        <li>{{ tip }}</li>
-    {% endfor %}
-</ul>
-{% endif %}
+    {% if tips %}
+    <div class="card" style="margin-top:14px;">
+      <div class="pill">TIPS</div>
+      <h3>Personalised tips (demo)</h3>
+      <ul class="muted">
+        {% for tip in tips %}
+          <li>{{ tip }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
 
-{% endif %}
+  {% endif %}
+</section>
+
 {% endblock %}

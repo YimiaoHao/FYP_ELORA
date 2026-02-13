@@ -1,36 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>{{ title or "ELORA" }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or "ELORA — Obesity Risk" }}</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260213">
 </head>
 <body>
-<header>
-    <h1>ELORA - Obesity Risk</h1>
-    <nav>
-        <a href="/">Home</a>
-        <a href="/record-today">Record Today</a>
-        <a href="/history">History</a>
-        <a href="/trends">Trends</a>
-        <a href="/assessment">Assessment</a>
-        <a href="/privacy">Privacy</a>
-    </nav>
-    <hr>
-</header>
+  {% set path = request.url.path if request is defined else '' %}
+  <header class="site">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <a class="logo" href="/">ELORA — Obesity Risk</a>
+        <div class="tagline">Local-first · lifestyle reference only</div>
+      </div>
+      <nav class="nav">
+        <a class="{{ 'active' if path=='/' else '' }}" href="/">Home</a>
+        <a class="{{ 'active' if path.startswith('/record') else '' }}" href="/record-today">Record</a>
+        <a class="{{ 'active' if path.startswith('/history') else '' }}" href="/history">History</a>
+        <a class="{{ 'active' if path.startswith('/trends') else '' }}" href="/trends">Trends</a>
+        <a class="{{ 'active' if path.startswith('/assessment') else '' }}" href="/assessment">Assessment</a>
+        <a class="{{ 'active' if path.startswith('/privacy') else '' }}" href="/privacy">Privacy</a>
+      </nav>
+    </div>
+  </header>
 
-<main>
-    {% block content %}
-    {% endblock %}
-</main>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
 
-<footer>
-    <hr>
-    <p style="font-size: 12px; color: #666;">
-        Local-first obesity risk prototype · For lifestyle reference only, not medical advice.
-    </p>
-</footer>
-
-<script src="/static/js/main.js"></script>
+  <footer class="wrap">
+    Local-first obesity risk prototype · For lifestyle reference only, not medical advice.
+  </footer>
 </body>
 </html>

@@ -1,40 +1,58 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>Privacy & Data Handling</h2>
 
-<p>
-    ELORA is a local prototype designed for a final year project. It focuses on
-    modelling obesity risk and visualising lifestyle trends, while keeping data
-    on the user's own device.
-</p>
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="pill">PRIVACY</div>
+      <h2>Privacy & Data Handling</h2>
+      <p class="sub">ELORA keeps your data on your device and is designed for educational demonstration only.</p>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/history">Open History</a>
+    </div>
+  </div>
 
-<h3>What data does ELORA store?</h3>
-<ul>
-    <li>Daily records: date, age, gender, height, weight</li>
-    <li>Simple lifestyle fields: family history flag, activity level, water intake</li>
-    <li>Derived BMI value for each record</li>
-</ul>
+  <div class="grid g2">
+    <div class="card">
+      <div class="pill">STORED</div>
+      <h3>What data does ELORA store?</h3>
+      <ul class="muted">
+        <li>Daily records: date, age, gender, height, weight</li>
+        <li>Lifestyle fields: family history flag, activity level, water intake</li>
+        <li>Derived BMI value per record</li>
+      </ul>
+      <p class="muted" style="margin-top:10px;">No name, email address, student ID, address or contact details are stored.</p>
+    </div>
 
-<p>No name, email address, student ID, home address or contact details are stored.</p>
+    <div class="card">
+      <div class="pill">LOCATION</div>
+      <h3>Where is the data stored?</h3>
+      <ul class="muted">
+        <li>Data is stored in a local SQLite database file under the ELORA project folder.</li>
+        <li>The prototype does not send records to any remote server or cloud service.</li>
+      </ul>
+    </div>
 
-<h3>Where is the data stored?</h3>
-<ul>
-    <li>Data is stored in a local SQLite database file under the ELORA project folder.</li>
-    <li>The prototype does not send records to any remote server or cloud service.</li>
-</ul>
+    <div class="card">
+      <div class="pill">CONTROL</div>
+      <h3>How can the user control their data?</h3>
+      <ul class="muted">
+        <li>Use <b>Download CSV</b> on the History page to export a copy.</li>
+        <li>Use <b>Clear history</b> on the History page to permanently delete local records.</li>
+      </ul>
+    </div>
 
-<h3>How can the user control their data?</h3>
-<ul>
-    <li>Use the <strong>Download history as CSV</strong> option on the History page to export a copy.</li>
-    <li>Use the <strong>Clear history</strong> button to permanently delete all records from the local database.</li>
-</ul>
-
-<h3>Use in research / teaching context</h3>
-<p>
-    This prototype is intended for demonstration and educational purposes only.
-    It does not provide medical diagnosis or treatment recommendations.
-    Any health-related decisions should be made with a qualified clinician.
-</p>
+    <div class="card soft">
+      <div class="pill">DISCLAIMER</div>
+      <h3>Use in research / teaching context</h3>
+      <p class="muted">
+        This prototype is intended for demonstration and educational purposes only.
+        It does not provide medical diagnosis or treatment recommendations.
+        Any health-related decisions should be made with a qualified clinician.
+      </p>
+    </div>
+  </div>
+</section>
 
 {% endblock %}

@@ -1,26 +1,70 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>ELORA Home</h2>
 
-<p>Welcome to the ELORA obesity risk prototype.</p>
-<p>You can record today's data, view history, see trends and check a simple risk assessment.</p>
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="pill">HOME</div>
+      <h2>ELORA — Obesity Risk</h2>
+      <p class="sub">Record daily data, visualise trends, and view a simple hybrid risk assessment.</p>
+    </div>
+  </div>
 
-<hr>
+  <div class="grid g3">
+    <div class="card soft">
+      <div class="pill">START</div>
+      <h3>Record Today</h3>
+      <p class="muted">Add age, height, weight, activity and water intake for today.</p>
+      <div class="actions">
+        <a class="btn primary" href="/record-today">Open form</a>
+      </div>
+    </div>
 
-<h3>Privacy note (prototype)</h3>
-<p>
-    This prototype stores all records <strong>locally</strong> in a small SQLite database
-    on your own machine. Data is not sent to any remote server.
-</p>
-<ul>
-    <li>You can download your data at any time via the <strong>History → Download CSV</strong> button.</li>
-    <li>You can permanently delete all records via the <strong>Clear history</strong> button.</li>
-    <li>No name, email, address or student ID is collected in this prototype.</li>
-</ul>
+    <div class="card soft">
+      <div class="pill">DATA</div>
+      <h3>History</h3>
+      <p class="muted">Review last 30 records, export as CSV, or clear local data.</p>
+      <div class="actions">
+        <a class="btn" href="/history">View history</a>
+      </div>
+    </div>
 
-<p style="font-size: 0.9em; color: #666;">
-    This system is an educational prototype only and does not provide medical advice.
-</p>
+    <div class="card soft">
+      <div class="pill">INSIGHTS</div>
+      <h3>Trends</h3>
+      <p class="muted">See weight and BMI trends for the last 7 or 30 records.</p>
+      <div class="actions">
+        <a class="btn" href="/trends?n=7">View charts</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="grid g2">
+    <div class="card highlight">
+      <div class="pill">RISK</div>
+      <h3>Assessment</h3>
+      <p class="muted">Check the hybrid score and view BMI + model-based results.</p>
+      <div class="actions">
+        <a class="btn primary" href="/assessment">Check risk</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="pill">PRIVACY</div>
+      <h3>Privacy note (prototype)</h3>
+      <ul class="muted">
+        <li>All records are stored locally in SQLite (no remote upload by default).</li>
+        <li>Export your data anytime via <b>History → Download CSV</b>.</li>
+        <li>Clear history deletes local data permanently.</li>
+        <li>No name/email/address/student ID is collected.</li>
+      </ul>
+      <div class="actions">
+        <a class="btn" href="/privacy">Read policy</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 {% endblock %}
