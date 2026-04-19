@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <div class="pill">Detail</div>
+      <h2>Record Detail</h2>
+      <p class="sub">Detailed information for a single saved record, presented with the same data fields and actions.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="detail-grid">
+      <div class="detail-item"><span>Date</span><strong>{{ record.date }}</strong></div>
+      <div class="detail-item"><span>Age</span><strong>{{ record.age }}</strong></div>
+      <div class="detail-item"><span>Gender</span><strong>{{ record.gender }}</strong></div>
+      <div class="detail-item"><span>Height</span><strong>{{ "%.2f"|format(record.height_m) if record.height_m is not none else "" }} m</strong></div>
+      <div class="detail-item"><span>Weight</span><strong>{{ "%.1f"|format(record.weight_kg) if record.weight_kg is not none else "" }} kg</strong></div>
+      <div class="detail-item"><span>BMI</span><strong>{{ "%.1f"|format(record.bmi) if record.bmi is not none else "" }}</strong></div>
+      <div class="detail-item"><span>Family history</span><strong>{{ record.family_history }}</strong></div>
+      <div class="detail-item"><span>Activity level</span><strong>{{ record.activity_level }}</strong></div>
+      <div class="detail-item"><span>Water intake</span><strong>{{ record.water_ml }} ml</strong></div>
+      <div class="detail-item"><span>Record ID</span><strong>{{ record.id }}</strong></div>
+    </div>
+
+    <div class="actions" style="margin-top: 20px;">
+      <a class="btn" href="/history">Back to History</a>
+      <a class="btn primary" href="/record-today?reset=1">Start new assessment</a>
+    </div>
+  </div>
+
+  <p class="fine-print">Local-first prototype for lifestyle reference only. Not medical advice.</p>
+</section>
+
+{% endblock %}
