@@ -1,46 +1,32 @@
-# -----------------------
-# Local database / data
-# -----------------------
-elora.db
-*.db
-*.sqlite
-*.sqlite3
-
-# (Optional) logs / exports
-# *.log
-# *.csv
-# *.xlsx
-# *.png
-# *.jpg
-
-# -----------------------
-# Python env / caches
-# -----------------------
-.venv/
-venv/
-
-# Python bytecode / caches
+# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
 
-# Test / type-check caches
-.pytest_cache/
-.mypy_cache/
+# Virtual environment
+venv/
+.venv/
 
-# Jupyter
-.ipynb_checkpoints/
+# Local database / runtime files
+elora.db
+*.db
 
-# -----------------------
-# OS / IDE
-# -----------------------
+# Logs
+logs/
+*.log
+
+# OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# -----------------------
-# Secrets / env files
-# -----------------------
-.env
-.env.*
+# Build / packaging
+dist/
+build/
+*.egg-info/
+
+# Temporary / misc
+*.tmp
+*.bak
