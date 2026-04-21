@@ -1,17 +1,9 @@
-# app/rules.py
-"""
-Rule-based part of ELORA:
-- BMI classification (demo thresholds)
-- Simple lifestyle advice based on BMI + record fields
-"""
-
 from typing import List, Tuple
 
 
 def classify_bmi(bmi: float) -> Tuple[str, int]:
     """
-    根据 BMI 计算简单风险等级 & 分数 (0-100)
-    这里是演示用的阈值，对应报告里可以说明是 WHO 范围的简化版本。
+    Simple BMI category + base score (0-100)
     """
     if bmi is None:
         return "Unknown", 0
@@ -30,10 +22,53 @@ def classify_bmi(bmi: float) -> Tuple[str, int]:
         return "Obesity class III", 95
 
 
+def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
+    """
+    Return:
+    - bmi_category
+    - rules_score (0-100)
+    - triggered_rules (list of human-readable rule explanations)
+    """
+    bmi_category, score = classify_bmi(bmi)
+    triggered_rules: List[str] = []
+
+    # BMI-related trigger
+    if bmi is not None and bmi >= 25:
+        triggered_rules.append(
+            f"BMI is in the {bmi_category.lower()} range ({bmi:.1f})."
+        )
+
+    # Family history
+    family_history = (getattr(record, "family_history", "") or "").upper()
+    if family_history.startswith("Y"):
+        score += 5
+        triggered_rules.append(
+            "Family history of overweight/obesity was reported."
+        )
+
+    # Activity level
+    activity_level = (getattr(record, "activity_level", "") or "").lower()
+    if activity_level == "low":
+        score += 10
+        triggered_rules.append(
+            "Activity level is recorded as low."
+        )
+
+    # Water intake
+    water_ml = getattr(record, "water_ml", None)
+    if isinstance(water_ml, (int, float)) and water_ml < 1500:
+        score += 5
+        triggered_rules.append(
+            "Water intake is below 1500 ml today."
+        )
+
+    score = max(0, min(100, int(score)))
+    return bmi_category, score, triggered_rules
+
+
 def generate_tips(record, bmi_category: str) -> List[str]:
     tips: List[str] = []
 
-    # Related suggestions
     if bmi_category.startswith("Obesity") or bmi_category == "Overweight":
         tips.append(
             "Your BMI is in the overweight/obesity range. Consider gradually reducing sugary drinks and high-calorie snacks."
@@ -52,7 +87,6 @@ def generate_tips(record, bmi_category: str) -> List[str]:
             "Your BMI is in the normal range. Try to maintain a stable weight with balanced meals and regular activity."
         )
 
-    #  Activity level recommendations
     level = (getattr(record, "activity_level", "") or "").lower()
     if level == "low":
         tips.append(
@@ -67,9 +101,8 @@ def generate_tips(record, bmi_category: str) -> List[str]:
             "You reported a high activity level. Ensure you also get enough recovery and sleep to support your health."
         )
 
-    # Advice on water intake
     water_ml = getattr(record, "water_ml", None)
-    if isinstance(water_ml, int):
+    if isinstance(water_ml, (int, float)):
         if water_ml < 1500:
             tips.append(
                 "Your water intake today is relatively low. Unless advised otherwise, many adults aim for roughly 1500–2000 ml per day."
@@ -79,14 +112,12 @@ def generate_tips(record, bmi_category: str) -> List[str]:
                 "You reported a relatively high water intake today. Make sure this matches any advice from your clinician."
             )
 
-    # Advice on water intake
     family_history = (getattr(record, "family_history", "") or "").upper()
     if family_history.startswith("Y"):
         tips.append(
             "You reported a family history of overweight/obesity. Maintaining regular activity and balanced diet is especially important."
         )
 
-    # Remove duplicates as needed
     seen = set()
     unique_tips: List[str] = []
     for t in tips:

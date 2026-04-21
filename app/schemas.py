@@ -1,39 +1,34 @@
-from typing import Optional, List
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class RecordInput(BaseModel):
-    """
-    Input format for one "Record Today" entry (for the /api/predict endpoint)
-    Note: This is for JSON API use, not for forms
-    """
     age: int = Field(..., ge=5, le=100, description="Age in years")
-    gender: str = Field(..., description="M/F 等")
-    height_m: float = Field(
-        ..., gt=0, le=2.5, description="Height in metres, e.g. 1.68"
-    )
-    weight_kg: float = Field(
-        ..., gt=0, le=300, description="Weight in kg, e.g. 60.0"
-    )
-    family_history: str = Field(
-        ..., description="'yes' / 'no' – family history of overweight/obesity"
-    )
-    activity_level: str = Field(
-        ..., description="Activity level: low / medium / high"
-    )
-    water_ml: int = Field(
-        ..., ge=0, le=10000, description="Water intake today in ml"
-    )
+    gender: str = Field(..., description="Gender")
+    height_m: float = Field(..., gt=0, le=2.5, description="Height in metres")
+    weight_kg: float = Field(..., gt=0, le=300, description="Weight in kg")
+    family_history: str = Field(..., description="Y/N or yes/no")
+    activity_level: str = Field(..., description="low / medium / high")
+    water_ml: int = Field(..., ge=0, le=10000, description="Water intake in ml")
 
 
 class PredictionResponse(BaseModel):
-    """
-    /api/predict Result format returned to the frontend
-    """
     bmi: float
     bmi_category: str
-    risk_score: int
+    rules_score: int = Field(..., ge=0, le=100)
 
     model_label: Optional[str] = None
     model_confidence: Optional[float] = None
-    tips: Optional[List[str]] = None
+    model_risk_base: Optional[int] = Field(default=None, ge=0, le=100)
+    model_risk_percent: Optional[int] = Field(default=None, ge=0, le=100)
+
+    final_risk_percent: int = Field(..., ge=0, le=100)
+    risk_tier: str
+
+    triggered_rules: List[str] = Field(default_factory=list)
+    tips: List[str] = Field(default_factory=list)
+
+    ml_available: bool
+    mode: str
+    warning: Optional[str] = None
