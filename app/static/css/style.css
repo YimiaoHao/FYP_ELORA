@@ -311,6 +311,7 @@ code{
   padding-top:30px;
 }
 
+<<<<<<< HEAD
 .feature-layout{
   display:grid;
   grid-template-columns:minmax(280px, 1.02fr) minmax(0, 1.18fr);
@@ -357,6 +358,8 @@ code{
   margin-top:auto;
 }
 
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
 .feature-index{
   display:inline-flex;
   align-items:center;
@@ -683,10 +686,13 @@ tbody tr:hover{
   .detail-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
+<<<<<<< HEAD
 
   .feature-layout{
     grid-template-columns:1fr;
   }
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
 }
 
 @media (max-width:760px){
@@ -706,7 +712,10 @@ tbody tr:hover{
   .hero-panel,
   .hero-panel.compact-hero,
   .split-layout,
+<<<<<<< HEAD
   .feature-cluster,
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
   .g2,
   .g3,
   .g4,
@@ -721,10 +730,13 @@ tbody tr:hover{
     padding:22px;
   }
 
+<<<<<<< HEAD
   .feature-card-large{
     padding:22px;
   }
 
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
   .page-main{
     padding:26px 0 38px;
   }
