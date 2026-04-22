@@ -311,6 +311,10 @@ code{
   padding-top:30px;
 }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
 .feature-layout{
   display:grid;
   grid-template-columns:minmax(280px, 1.02fr) minmax(0, 1.18fr);
@@ -357,6 +361,11 @@ code{
   margin-top:auto;
 }
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
 .feature-index{
   display:inline-flex;
   align-items:center;
@@ -683,10 +692,19 @@ tbody tr:hover{
   .detail-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
 
   .feature-layout{
     grid-template-columns:1fr;
   }
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
 }
 
 @media (max-width:760px){
@@ -706,7 +724,14 @@ tbody tr:hover{
   .hero-panel,
   .hero-panel.compact-hero,
   .split-layout,
+<<<<<<< HEAD
   .feature-cluster,
+=======
+<<<<<<< HEAD
+  .feature-cluster,
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
   .g2,
   .g3,
   .g4,
@@ -721,10 +746,19 @@ tbody tr:hover{
     padding:22px;
   }
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
   .feature-card-large{
     padding:22px;
   }
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 51a01a7ab97283643aabb6dff61566bdd5d38249
+>>>>>>> e883bea5a980cfc8822c6f66f430271266d23818
   .page-main{
     padding:26px 0 38px;
   }
