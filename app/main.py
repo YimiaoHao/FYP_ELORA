@@ -61,6 +61,54 @@ app_logger = setup_file_logger("elora.app", "app.log")
 risk_logger = setup_file_logger("elora.risk", "risk_calc.log")
 
 
+# -----------------------------
+# Benchmark metrics
+# -----------------------------
+BENCHMARK_PATH = BASE_DIR / "ml" / "benchmark_results.csv"
+
+
+def _safe_float(value, default=None):
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def load_best_benchmark_metrics():
+    default = {
+        "benchmark_model": None,
+        "benchmark_accuracy": None,
+        "benchmark_macro_f1": None,
+    }
+
+    if not BENCHMARK_PATH.exists():
+        return default
+
+    try:
+        with open(BENCHMARK_PATH, "r", encoding="utf-8-sig", newline="") as f:
+            rows = list(csv.DictReader(f))
+
+        if not rows:
+            return default
+
+        best = max(
+            rows,
+            key=lambda r: (
+                _safe_float(r.get("macro_f1"), -1),
+                _safe_float(r.get("accuracy"), -1),
+            ),
+        )
+
+        return {
+            "benchmark_model": best.get("model"),
+            "benchmark_accuracy": _safe_float(best.get("accuracy")),
+            "benchmark_macro_f1": _safe_float(best.get("macro_f1")),
+        }
+    except Exception as e:
+        app_logger.warning("Failed to load benchmark metrics: %s", e)
+        return default
+
+
 def log_risk_event(source: str, item, result: dict):
     record_date = getattr(item, "date", None)
     risk_logger.info(
@@ -158,6 +206,7 @@ def build_assessment_result(item):
         warning = "Model prediction is unavailable. Showing rules-only result."
 
     normalized_rules_score = rules_score / 100.0
+    benchmark = load_best_benchmark_metrics()
 
     if ml_available and model_risk_component is not None:
         final_risk_index = (0.7 * model_risk_component) + (0.3 * normalized_rules_score)
@@ -182,6 +231,9 @@ def build_assessment_result(item):
         "ml_available": ml_available,
         "mode": mode,
         "warning": warning,
+        "benchmark_model": benchmark["benchmark_model"],
+        "benchmark_accuracy": benchmark["benchmark_accuracy"],
+        "benchmark_macro_f1": benchmark["benchmark_macro_f1"],
     }
 
 

@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
+import json
 
 import joblib
 import pandas as pd
@@ -22,6 +23,7 @@ from sklearn.neural_network import MLPClassifier
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR.parent / "data" / "obesity_level.csv"
 MODEL_PATH = BASE_DIR / "obesity_model.joblib"
+FINAL_METRICS_PATH = BASE_DIR / "final_model_metrics.json"
 
 RANDOM_STATE = 42
 
@@ -30,7 +32,6 @@ RUN_GRID_SEARCH = False
 
 
 def _normalize_gender(v) -> str:
-
     if pd.isna(v):
         return "Female"
     s = str(v).strip().lower()
@@ -42,7 +43,6 @@ def _normalize_gender(v) -> str:
 
 
 def _normalize_yes_no_to_YN(v):
-
     if pd.isna(v):
         return None
     s = str(v).strip().lower()
@@ -54,13 +54,20 @@ def _normalize_yes_no_to_YN(v):
 
 
 def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
-
     if not csv_path.exists():
         raise FileNotFoundError(f"Dataset not found: {csv_path}")
 
     df = pd.read_csv(csv_path)
 
-    required_cols = {"Age", "Gender", "Height", "Weight", "family_history_with_overweight", "FAF", "CH2O"}
+    required_cols = {
+        "Age",
+        "Gender",
+        "Height",
+        "Weight",
+        "family_history_with_overweight",
+        "FAF",
+        "CH2O",
+    }
     missing = required_cols - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns in CSV: {missing}")
@@ -120,7 +127,6 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
 
 
 def build_preprocessor(numeric_features, categorical_features) -> ColumnTransformer:
-
     numeric_transformer = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
@@ -144,7 +150,6 @@ def build_preprocessor(numeric_features, categorical_features) -> ColumnTransfor
 
 
 def confidence_stats(pipe: Pipeline, X_test) -> Dict[str, float]:
-
     if not hasattr(pipe, "predict_proba"):
         return {
             "conf_mean": float("nan"),
@@ -172,7 +177,6 @@ def train_and_evaluate_model(
     y_train,
     y_test,
 ) -> Dict[str, Any]:
-
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", classifier)])
 
     pipe.fit(X_train, y_train)
@@ -199,7 +203,6 @@ def train_and_evaluate_model(
 
 
 def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> Dict[str, Any]:
-
     candidates = {
         "logreg": LogisticRegression(max_iter=1000),
         "knn": KNeighborsClassifier(n_neighbors=9),
@@ -216,7 +219,11 @@ def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> 
     for name, clf in candidates.items():
         results.append(train_and_evaluate_model(name, clf, preprocessor, X_train, X_test, y_train, y_test))
 
-    results_sorted = sorted(results, key=lambda r: (r["macro_f1"], r["accuracy"], r["conf_mean"]), reverse=True)
+    results_sorted = sorted(
+        results,
+        key=lambda r: (r["macro_f1"], r["accuracy"], r["conf_mean"]),
+        reverse=True,
+    )
 
     print("=== Summary (sorted) ===")
     for r in results_sorted:
@@ -253,15 +260,15 @@ def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> 
 
     return best
 
-
-def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) -> Pipeline:
-    rf = RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1)
-    pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", rf)])
+def grid_search_gradient_boosting(preprocessor, X_train, X_test, y_train, y_test):
+    gb = GradientBoostingClassifier(random_state=RANDOM_STATE)
+    pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", gb)])
 
     param_grid = {
-        "clf__n_estimators": [200, 400],
-        "clf__max_depth": [None, 10, 20],
-        "clf__max_features": ["sqrt", "log2"],
+        "clf__n_estimators": [150, 250],
+        "clf__learning_rate": [0.05, 0.1],
+        "clf__max_depth": [2, 3],
+        "clf__subsample": [0.8, 1.0],
         "clf__min_samples_split": [2, 5],
     }
 
@@ -274,7 +281,7 @@ def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) ->
         verbose=1,
     )
 
-    print("=== Grid search for RandomForest (optimising macro F1) ===")
+    print("=== Grid search for GradientBoosting (optimising macro F1) ===")
     grid.fit(X_train, y_train)
 
     print(f"Best params: {grid.best_params_}")
@@ -286,16 +293,29 @@ def grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test) ->
     y_pred = best_model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     macro_f1 = f1_score(y_test, y_pred, average="macro")
+    conf = confidence_stats(best_model, X_test)
 
-    print("=== RandomForest (after grid search) on test set ===")
-    print(f"Accuracy : {acc:.3f}")
-    print(f"Macro F1 : {macro_f1:.3f}")
+    print("=== GradientBoosting (after grid search) on test set ===")
+    print(f"Accuracy    : {acc:.3f}")
+    print(f"Macro F1    : {macro_f1:.3f}")
+    print(f"Conf(mean)  : {conf['conf_mean']:.3f}")
+    print(f"Conf(p50)   : {conf['conf_p50']:.3f}")
     print()
     print("=== Classification report on test set ===")
     print(classification_report(y_test, y_pred))
     print()
 
-    return best_model
+    metrics = {
+    "model_name": "gb_optimised",
+    "accuracy": float(acc),
+    "macro_f1": float(macro_f1),
+    "conf_mean": float(conf["conf_mean"]),
+    "conf_p50": float(conf["conf_p50"]),
+    "best_cv_macro_f1": float(grid.best_score_),
+    "best_params": grid.best_params_,
+    }
+
+    return best_model, metrics
 
 
 def main():
@@ -316,20 +336,31 @@ def main():
     preprocessor = build_preprocessor(numeric_features, categorical_features)
 
     # Multi-model baseline comparison
-
     best = compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test)
 
-    # 2) GridSearch
+    # Grid search on the best baseline family: Gradient Boosting
     if RUN_GRID_SEARCH:
-        final_model = grid_search_random_forest(preprocessor, X_train, X_test, y_train, y_test)
+        final_model, final_metrics = grid_search_gradient_boosting(preprocessor, X_train, X_test, y_train, y_test)
     else:
-        # When GridSearch is not running, the benchmark optimal model is directly used as the final model (satisfying "select the optimal model")
         final_model = best["model"]
+        final_metrics = {
+            "model_name": best["name"],
+            "accuracy": float(best["accuracy"]),
+            "macro_f1": float(best["macro_f1"]),
+            "conf_mean": float(best["conf_mean"]),
+            "conf_p50": float(best["conf_p50"]),
+            "best_cv_macro_f1": None,
+            "best_params": None,
+        }
 
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(final_model, MODEL_PATH)
     print(f"Model saved to: {MODEL_PATH}")
+    
+    with open(FINAL_METRICS_PATH, "w", encoding="utf-8") as f:
+        json.dump(final_metrics, f, ensure_ascii=False, indent=2)
 
+    print(f"Final metrics saved to: {FINAL_METRICS_PATH}")
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,9 @@
     <div>
       <div class="pill">Assessment</div>
       <h2>Risk Assessment</h2>
-      <p class="sub">The scoring logic stays unchanged. This page now presents the same result in a cleaner, easier-to-read layout.</p>
+      <p class="sub">
+        The scoring logic stays unchanged. This page now presents the same result in a cleaner, easier-to-read layout.
+      </p>
     </div>
   </div>
 
@@ -87,11 +89,40 @@
         <h3>Model-based assessment</h3>
         {% if ml_available %}
           <div class="detail-grid compact">
-            <div class="detail-item"><span>Predicted obesity level</span><strong>{{ model_label }}</strong></div>
-            <div class="detail-item"><span>Model confidence</span><strong>{{ "%.0f"|format(model_confidence * 100) }}%</strong></div>
-            <div class="detail-item"><span>Model risk direction</span><strong>{{ model_risk_base }}%</strong></div>
-            <div class="detail-item"><span>P(model) used in fusion</span><strong>{{ model_risk_percent }}%</strong></div>
+            <div class="detail-item">
+              <span>Predicted obesity level</span>
+              <strong>{{ model_label }}</strong>
+            </div>
+
+            <div class="detail-item">
+              <span>Current prediction probability</span>
+              <strong>{{ "%.0f"|format(model_confidence * 100) }}%</strong>
+            </div>
+
+            {% if benchmark_accuracy is not none %}
+            <div class="detail-item">
+              <span>Offline validation accuracy</span>
+              <strong>{{ "%.1f"|format(benchmark_accuracy * 100) }}%</strong>
+            </div>
+            {% endif %}
+
+            {% if benchmark_macro_f1 is not none %}
+            <div class="detail-item">
+              <span>Offline validation macro-F1</span>
+              <strong>{{ "%.1f"|format(benchmark_macro_f1 * 100) }}%</strong>
+            </div>
+            {% endif %}
           </div>
+
+          <p class="muted" style="margin-top: 12px;">
+            The probability above is for this record only. It is not the model’s overall test accuracy.
+          </p>
+
+          {% if benchmark_model %}
+          <p class="muted">
+            Best offline benchmark model: {{ benchmark_model|upper }}
+          </p>
+          {% endif %}
         {% else %}
           <p class="muted">Model prediction is currently unavailable.</p>
           <p class="muted">Current result uses rules-only mode.</p>
