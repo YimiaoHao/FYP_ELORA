@@ -8,12 +8,11 @@ from sqlalchemy.orm import Session
 import datetime as dt
 import io
 import csv
+import logging
 
-# Input/output model for /api/predict
 from .schemas import RecordInput, PredictionResponse
-
-from .ml_service import predict_obesity_level, predict_obesity_level_from_fields
-from .rules import classify_bmi, generate_tips
+from .ml_service import predict_obesity_level
+from .rules import generate_tips, evaluate_rule_score
 from .database import Base, engine, get_db
 from . import models
 
@@ -33,43 +32,220 @@ app.mount(
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
-@app.post("/api/predict", response_model=PredictionResponse)
-async def api_predict(payload: RecordInput):
+# -----------------------------
+# Logging
+# -----------------------------
+LOG_DIR = BASE_DIR.parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
 
-    # Calculate BMI + BMI Score
-    bmi = round(payload.weight_kg / (payload.height_m ** 2), 1)
-    bmi_category, risk_score = classify_bmi(bmi)
 
-    # 2) Call the model prediction of "field version"
-    model_label = None
-    model_confidence = None
-    try:
-        model_label, model_confidence = predict_obesity_level_from_fields(
-            age=payload.age,
-            gender=payload.gender,
-            height_m=payload.height_m,
-            weight_kg=payload.weight_kg,
-            family_history=payload.family_history,
-            activity_level=payload.activity_level,
-            water_ml=payload.water_ml,
-        )
-    except Exception as e:
-        print("API /api/predict ML error:", e)
+def setup_file_logger(name: str, filename: str) -> logging.Logger:
+    logger = logging.getLogger(name)
 
-    # Return a unified response model
-    return PredictionResponse(
-        bmi=bmi,
-        bmi_category=bmi_category,
-        risk_score=risk_score,
-        model_label=model_label,
-        model_confidence=model_confidence,
-        tips=None,
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    file_handler = logging.FileHandler(LOG_DIR / filename, encoding="utf-8")
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+
+app_logger = setup_file_logger("elora.app", "app.log")
+risk_logger = setup_file_logger("elora.risk", "risk_calc.log")
+
+
+def log_risk_event(source: str, item, result: dict):
+    record_date = getattr(item, "date", None)
+    risk_logger.info(
+        "source=%s date=%s mode=%s final_risk_percent=%s risk_tier=%s model_label=%s model_confidence=%s rules_score=%s",
+        source,
+        record_date if record_date else "N/A",
+        result.get("mode"),
+        result.get("final_risk_percent"),
+        result.get("risk_tier"),
+        result.get("model_label"),
+        result.get("model_confidence"),
+        result.get("rules_score"),
     )
 
 
+# -----------------------------
+# Helpers
+# -----------------------------
+def compute_bmi(height_m, weight_kg):
+    if height_m is None or weight_kg is None or height_m <= 0:
+        return None
+    return round(weight_kg / (height_m ** 2), 1)
+
+
+def risk_tier_from_percent(percent: int) -> str:
+    if percent < 40:
+        return "Low"
+    elif percent < 70:
+        return "Moderate"
+    else:
+        return "High"
+
+
+def normalize_model_label(label: str) -> str:
+    if not label:
+        return ""
+    return str(label).strip().replace(" ", "_")
+
+
+def model_risk_base_from_label(label: str) -> float:
+    """
+    Map predicted obesity class to obesity-risk direction.
+    Returns a base risk in [0, 1].
+    """
+    key = normalize_model_label(label)
+
+    mapping = {
+        "Insufficient_Weight": 0.15,
+        "Normal_Weight": 0.20,
+        "Overweight_Level_I": 0.55,
+        "Overweight_Level_II": 0.70,
+        "Obesity_Type_I": 0.85,
+        "Obesity_Type_II": 0.95,
+        "Obesity_Type_III": 1.00,
+    }
+
+    return mapping.get(key, 0.50)
+
+
+def build_assessment_result(item):
+    """
+    Works for both:
+    - DB Record
+    - Pydantic RecordInput
+    """
+    bmi = getattr(item, "bmi", None)
+    if bmi is None:
+        bmi = compute_bmi(
+            getattr(item, "height_m", None),
+            getattr(item, "weight_kg", None),
+        )
+    else:
+        bmi = round(bmi, 1)
+
+    bmi_category, rules_score, triggered_rules = evaluate_rule_score(item, bmi)
+    tips = generate_tips(item, bmi_category)
+
+    ml_available = False
+    model_label = None
+    model_confidence = None
+    model_risk_base = None
+    model_risk_component = None
+    mode = "rules_only"
+    warning = None
+
+    try:
+        model_label, model_confidence = predict_obesity_level(item)
+        model_risk_base = model_risk_base_from_label(model_label)
+        model_risk_component = model_risk_base * model_confidence
+        ml_available = True
+        mode = "hybrid"
+    except Exception as e:
+        print("ML prediction error:", e)
+        app_logger.warning("ML prediction unavailable: %s", e)
+        warning = "Model prediction is unavailable. Showing rules-only result."
+
+    normalized_rules_score = rules_score / 100.0
+
+    if ml_available and model_risk_component is not None:
+        final_risk_index = (0.7 * model_risk_component) + (0.3 * normalized_rules_score)
+    else:
+        final_risk_index = normalized_rules_score
+
+    final_risk_percent = max(0, min(100, int(round(final_risk_index * 100))))
+    risk_tier = risk_tier_from_percent(final_risk_percent)
+
+    return {
+        "bmi": bmi,
+        "bmi_category": bmi_category,
+        "rules_score": rules_score,
+        "triggered_rules": triggered_rules,
+        "model_label": model_label,
+        "model_confidence": model_confidence,
+        "model_risk_base": None if model_risk_base is None else int(round(model_risk_base * 100)),
+        "model_risk_percent": None if model_risk_component is None else int(round(model_risk_component * 100)),
+        "final_risk_percent": final_risk_percent,
+        "risk_tier": risk_tier,
+        "tips": tips,
+        "ml_available": ml_available,
+        "mode": mode,
+        "warning": warning,
+    }
+
+
+def validate_record_form(
+    date_str: str,
+    age: int,
+    gender: str,
+    height_m: float,
+    weight_kg: float,
+    family_history: str,
+    activity_level: str,
+    water_ml: int,
+):
+    errors = []
+
+    parsed_date = None
+    try:
+        parsed_date = dt.date.fromisoformat(date_str)
+    except Exception:
+        errors.append("Date is invalid. Please use a valid calendar date.")
+
+    if not (5 <= age <= 100):
+        errors.append("Age must be between 5 and 100.")
+
+    allowed_gender = {"Male", "Female", "Other", "M", "F", "O"}
+    if gender not in allowed_gender:
+        errors.append("Gender must be Male, Female, or Other.")
+
+    if not (0 < height_m <= 2.5):
+        errors.append("Height must be between 0 and 2.5 metres.")
+
+    if not (0 < weight_kg <= 300):
+        errors.append("Weight must be between 0 and 300 kg.")
+
+    allowed_family = {"Y", "N", "Yes", "No", "yes", "no"}
+    if family_history not in allowed_family:
+        errors.append("Family history must be Y or N.")
+
+    allowed_activity = {"low", "medium", "high"}
+    if activity_level not in allowed_activity:
+        errors.append("Activity level must be low, medium, or high.")
+
+    if not (0 <= water_ml <= 10000):
+        errors.append("Water intake must be between 0 and 10000 ml.")
+
+    return parsed_date, errors
+
+
+# -----------------------------
+# API
+# -----------------------------
+@app.post("/api/predict", response_model=PredictionResponse)
+async def api_predict(payload: RecordInput):
+    result = build_assessment_result(payload)
+    app_logger.info("API predict called successfully.")
+    log_risk_event("api_predict", payload, result)
+    return PredictionResponse(**result)
+
+
+# -----------------------------
+# Pages
+# -----------------------------
 @app.get("/", response_class=HTMLResponse)
 async def read_home(request: Request):
-
     return templates.TemplateResponse(
         "home.html",
         {
@@ -78,9 +254,9 @@ async def read_home(request: Request):
         },
     )
 
+
 @app.get("/privacy", response_class=HTMLResponse)
 async def privacy(request: Request):
-
     return templates.TemplateResponse(
         "privacy.html",
         {
@@ -91,16 +267,22 @@ async def privacy(request: Request):
 
 
 @app.get("/record-today", response_class=HTMLResponse)
-async def record_today_form(request: Request):
+async def record_today_form(
+    request: Request,
+    reset: int = Query(0),
+):
+    context = {
+        "request": request,
+        "title": "Record Today",
+        "submitted": False,
+    }
 
-    return templates.TemplateResponse(
-        "record_today.html",
-        {
-            "request": request,
-            "title": "Record Today",
-            "submitted": False,
-        },
-    )
+    if not reset:
+        context["data"] = {
+            "date": dt.date.today().isoformat()
+        }
+
+    return templates.TemplateResponse("record_today.html", context)
 
 
 @app.post("/record-today", response_class=HTMLResponse)
@@ -116,30 +298,10 @@ async def record_today_submit(
     water_ml: int = Form(...),
     db: Session = Depends(get_db),
 ):
-
-    bmi = None
-    if height_m > 0:
-        bmi = round(weight_kg / (height_m ** 2), 1)
-
-    # Unified gender storage caliber: Male/Female/Other (compatible with old M/F/O)
-    gender_map = {"M": "Male", "F": "Female", "O": "Other"}
-    gender = gender_map.get(gender, gender)
-
-    # Write to database
-    record = models.Record(
-        date=dt.date.fromisoformat(date),
-        age=age,
-        gender=gender,
-        height_m=height_m,
-        weight_kg=weight_kg,
-        family_history=family_history,
-        activity_level=activity_level,
-        water_ml=water_ml,
-        bmi=bmi,
+    parsed_date, errors = validate_record_form(
+        date, age, gender, height_m, weight_kg,
+        family_history, activity_level, water_ml
     )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
 
     data = {
         "date": date,
@@ -152,19 +314,108 @@ async def record_today_submit(
         "water_ml": water_ml,
     }
 
+    if errors:
+        app_logger.warning("Record validation failed for date=%s", date)
+        return templates.TemplateResponse(
+            "record_today.html",
+            {
+                "request": request,
+                "title": "Record Today",
+                "submitted": False,
+                "error": "Please correct the input issues below.",
+                "errors": errors,
+                "data": data,
+            },
+            status_code=400,
+        )
+
+    bmi = round(weight_kg / (height_m ** 2), 1) if height_m > 0 else None
+
+    gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+    gender = gender_map.get(gender, gender)
+
+    family_map = {
+        "Yes": "Y",
+        "yes": "Y",
+        "Y": "Y",
+        "No": "N",
+        "no": "N",
+        "N": "N",
+    }
+    family_history = family_map.get(family_history, family_history)
+
+    existing = (
+        db.query(models.Record)
+        .filter(models.Record.date == parsed_date)
+        .order_by(models.Record.id.desc())
+        .first()
+    )
+
+    if existing:
+        existing.age = age
+        existing.gender = gender
+        existing.height_m = height_m
+        existing.weight_kg = weight_kg
+        existing.family_history = family_history
+        existing.activity_level = activity_level
+        existing.water_ml = water_ml
+        existing.bmi = bmi
+        db.commit()
+        db.refresh(existing)
+        saved_record = existing
+        save_mode = "updated"
+        app_logger.info(
+            "Record updated for date=%s id=%s",
+            saved_record.date.isoformat(),
+            saved_record.id,
+        )
+    else:
+        record = models.Record(
+            date=parsed_date,
+            age=age,
+            gender=gender,
+            height_m=height_m,
+            weight_kg=weight_kg,
+            family_history=family_history,
+            activity_level=activity_level,
+            water_ml=water_ml,
+            bmi=bmi,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        saved_record = record
+        save_mode = "created"
+        app_logger.info(
+            "Record created for date=%s id=%s",
+            saved_record.date.isoformat(),
+            saved_record.id,
+        )
+
     return templates.TemplateResponse(
         "record_today.html",
         {
             "request": request,
             "title": "Record Today",
             "submitted": True,
-            "data": data,
-            "bmi": bmi,
+            "data": {
+                "date": saved_record.date.isoformat(),
+                "age": saved_record.age,
+                "gender": saved_record.gender,
+                "height_m": saved_record.height_m,
+                "weight_kg": saved_record.weight_kg,
+                "family_history": saved_record.family_history,
+                "activity_level": saved_record.activity_level,
+                "water_ml": saved_record.water_ml,
+            },
+            "bmi": saved_record.bmi,
+            "save_mode": save_mode,
         },
     )
+
+
 @app.get("/history", response_class=HTMLResponse)
 async def history(request: Request, db: Session = Depends(get_db)):
-
     records = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
@@ -179,24 +430,70 @@ async def history(request: Request, db: Session = Depends(get_db)):
             "records": records,
         },
     )
-@app.post("/history/clear")
-async def clear_history(request: Request, db: Session = Depends(get_db)):
 
-    db.query(models.Record).delete()
-    db.commit()
+
+@app.get("/history/view/{record_id}", response_class=HTMLResponse)
+async def history_detail(record_id: int, request: Request, db: Session = Depends(get_db)):
+    record = db.query(models.Record).filter(models.Record.id == record_id).first()
+
+    if not record:
+        app_logger.warning("History detail requested, but record not found. id=%s", record_id)
+        return RedirectResponse(
+            url="/history",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    app_logger.info("History detail viewed. id=%s date=%s", record.id, record.date.isoformat() if record.date else "N/A")
+
+    return templates.TemplateResponse(
+        "history_detail.html",
+        {
+            "request": request,
+            "title": "History Detail",
+            "record": record,
+        },
+    )
+
+
+@app.post("/history/delete/{record_id}")
+async def delete_single_record(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(models.Record).filter(models.Record.id == record_id).first()
+
+    if record:
+        deleted_date = record.date.isoformat() if record.date else "N/A"
+        db.delete(record)
+        db.commit()
+        app_logger.info("Single record deleted. id=%s date=%s", record_id, deleted_date)
+    else:
+        app_logger.warning("Single record delete attempted, but not found. id=%s", record_id)
+
     return RedirectResponse(
         url="/history",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
+
+@app.post("/history/clear")
+async def clear_history(request: Request, db: Session = Depends(get_db)):
+    total_before = db.query(models.Record).count()
+    db.query(models.Record).delete()
+    db.commit()
+    app_logger.info("History cleared. deleted_records=%s", total_before)
+    return RedirectResponse(
+        url="/history",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @app.get("/export")
 async def export_history(db: Session = Depends(get_db)):
-
     records = (
         db.query(models.Record)
         .order_by(models.Record.date.asc(), models.Record.id.asc())
         .all()
     )
+
+    app_logger.info("History exported. record_count=%s", len(records))
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -243,13 +540,13 @@ async def export_history(db: Session = Depends(get_db)):
         headers=headers,
     )
 
+
 @app.get("/trends", response_class=HTMLResponse)
 async def trends(
     request: Request,
     n: int = Query(7, ge=1, le=365),
     db: Session = Depends(get_db),
 ):
-
     records_desc = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
@@ -272,7 +569,6 @@ async def trends(
 
 @app.get("/assessment", response_class=HTMLResponse)
 async def assessment(request: Request, db: Session = Depends(get_db)):
-
     record = (
         db.query(models.Record)
         .order_by(models.Record.date.desc(), models.Record.id.desc())
@@ -289,37 +585,8 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
             },
         )
 
-    if record.bmi is not None:
-        bmi = round(record.bmi, 1)
-    elif record.height_m and record.height_m > 0:
-        bmi = round(record.weight_kg / (record.height_m ** 2), 1)
-    else:
-        bmi = None
-
-    bmi_category, risk_score = classify_bmi(bmi)
-    tips = generate_tips(record, bmi_category)
-
-    ml_available = False
-    model_label = None
-    model_confidence = 0.0
-
-    try:
-        model_label, model_confidence = predict_obesity_level(record)
-        ml_available = True
-    except Exception as e:
-        print("ML prediction error:", e)
-        ml_available = False
-
-    # The rule score (risk_score) is 0-100 and needs to be divided by 100 to normalize to 0-1
-    normalized_rules_score = risk_score / 100.0
-    
-    # If ML is available, use the hybrid formula: 0.7 *ML + 0.3 *Rules
-    if ml_available:
-        final_risk_index = (0.7 * model_confidence) + (0.3 * normalized_rules_score)
-    else:
-        final_risk_index = normalized_rules_score
-
-    final_risk_percent = int(final_risk_index * 100)
+    result = build_assessment_result(record)
+    log_risk_event("assessment_page", record, result)
 
     return templates.TemplateResponse(
         "assessment.html",
@@ -328,13 +595,6 @@ async def assessment(request: Request, db: Session = Depends(get_db)):
             "title": "Assessment",
             "has_record": True,
             "record": record,
-            "bmi": bmi,
-            "bmi_category": bmi_category,
-            "risk_score": risk_score,
-            "ml_available": ml_available,
-            "model_label": model_label,
-            "model_confidence": model_confidence,
-            "final_risk_percent": final_risk_percent,
-            "tips": tips,
+            **result,
         },
     )

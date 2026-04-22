@@ -1,68 +1,94 @@
 {% extends "base.html" %}
 {% block content %}
 
-<section class="section">
-  <div class="section-head">
-    <div>
-      <div class="pill">HOME</div>
-      <h2>ELORA — Obesity Risk</h2>
-      <p class="sub">Record daily data, visualise trends, and view a simple hybrid risk assessment.</p>
+<section class="hero-panel">
+  <div class="hero-copy">
+    <div class="pill">Local-First Health Tracking</div>
+    <h1>Simple daily recording, clearer risk insights.</h1>
+    <p class="lead">
+      ELORA helps you log routine health indicators, review changes over time, and read a hybrid lifestyle risk assessment in one clean workflow.
+    </p>
+    <div class="actions">
+      <a class="btn primary" href="/record-today">Record today</a>
+      <a class="btn" href="/assessment">Open assessment</a>
     </div>
   </div>
 
-  <div class="grid g3">
-    <div class="card soft">
-      <div class="pill">START</div>
-      <h3>Record Today</h3>
-      <p class="muted">Add age, height, weight, activity and water intake for today.</p>
-      <div class="actions">
-        <a class="btn primary" href="/record-today">Open form</a>
+  <div class="hero-note card accent-card">
+    <div class="pill">How It Works</div>
+    <h3>One local workflow</h3>
+    <div class="stack-list">
+      <div class="stack-item">
+        <strong>Record</strong>
+        <span>Save daily age, body metrics, activity, and water intake.</span>
       </div>
-    </div>
-
-    <div class="card soft">
-      <div class="pill">DATA</div>
-      <h3>History</h3>
-      <p class="muted">Review last 30 records, export as CSV, or clear local data.</p>
-      <div class="actions">
-        <a class="btn" href="/history">View history</a>
+      <div class="stack-item">
+        <strong>Review</strong>
+        <span>Browse history, inspect a single entry, or export your data as CSV.</span>
       </div>
-    </div>
-
-    <div class="card soft">
-      <div class="pill">INSIGHTS</div>
-      <h3>Trends</h3>
-      <p class="muted">See weight and BMI trends for the last 7 or 30 records.</p>
-      <div class="actions">
-        <a class="btn" href="/trends?n=7">View charts</a>
+      <div class="stack-item">
+        <strong>Interpret</strong>
+        <span>See a hybrid score built from rules and model-based prediction.</span>
       </div>
     </div>
   </div>
 </section>
 
 <section class="section">
-  <div class="grid g2">
-    <div class="card highlight">
-      <div class="pill">RISK</div>
-      <h3>Assessment</h3>
-      <p class="muted">Check the hybrid score and view BMI + model-based results.</p>
-      <div class="actions">
-        <a class="btn primary" href="/assessment">Check risk</a>
-      </div>
+  <div class="section-head">
+    <div>
+      <div class="pill">Main Pages</div>
+      <h2>Everything you need, arranged clearly.</h2>
+      <p class="sub">The features stay the same. The interface is simply cleaner, calmer, and easier to scan.</p>
     </div>
+  </div>
 
-    <div class="card">
-      <div class="pill">PRIVACY</div>
-      <h3>Privacy note (prototype)</h3>
-      <ul class="muted">
-        <li>All records are stored locally in SQLite (no remote upload by default).</li>
-        <li>Export your data anytime via <b>History → Download CSV</b>.</li>
-        <li>Clear history deletes local data permanently.</li>
-        <li>No name/email/address/student ID is collected.</li>
-      </ul>
+  <div class="feature-layout">
+    <article class="card feature-card feature-card-large">
+      <span class="feature-index">01</span>
+      <h3>Record Today</h3>
+      <p class="muted">Enter daily values with a structured form and save them locally.</p>
       <div class="actions">
-        <a class="btn" href="/privacy">Read policy</a>
+        <a class="btn primary" href="/record-today">Open form</a>
       </div>
+    </article>
+
+    <div class="feature-cluster">
+      <article class="card feature-card feature-card-compact">
+        <span class="feature-index">02</span>
+        <h3>History</h3>
+        <p class="muted">Review the latest 30 records, inspect details, export, or clear local data.</p>
+        <div class="actions">
+          <a class="btn" href="/history">View history</a>
+        </div>
+      </article>
+
+      <article class="card feature-card feature-card-compact">
+        <span class="feature-index">03</span>
+        <h3>Trends</h3>
+        <p class="muted">Visualise weight and BMI across recent records with the same existing chart logic.</p>
+        <div class="actions">
+          <a class="btn" href="/trends?n=7">View charts</a>
+        </div>
+      </article>
+
+      <article class="card feature-card feature-card-compact">
+        <span class="feature-index">04</span>
+        <h3>Assessment</h3>
+        <p class="muted">Read the latest hybrid score, rule triggers, and model-based explanation.</p>
+        <div class="actions">
+          <a class="btn" href="/assessment">Check score</a>
+        </div>
+      </article>
+
+      <article class="card feature-card feature-card-compact">
+        <span class="feature-index">05</span>
+        <h3>Privacy</h3>
+        <p class="muted">Understand what is stored, where it lives, and how the user stays in control.</p>
+        <div class="actions">
+          <a class="btn" href="/privacy">Read policy</a>
+        </div>
+      </article>
     </div>
   </div>
 </section>

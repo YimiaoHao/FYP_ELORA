@@ -4,61 +4,89 @@
 <section class="section">
   <div class="section-head">
     <div>
-      <div class="pill">DATA</div>
+      <div class="pill">History</div>
       <h2>History</h2>
-      <p class="sub">Last 30 records stored locally. You can export or clear your local data.</p>
+      <p class="sub">The same table actions are still here: view, export, delete a single record, or clear everything stored locally.</p>
     </div>
 
-    <div class="actions">
-      <form method="post" action="/history/clear" onsubmit="return confirm('This will delete all records permanently. Continue?');">
+    <div class="actions toolbar-actions">
+      <form method="post" action="/history/clear" onsubmit="return confirm('Clear all history? This cannot be undone.');">
         <button class="btn danger" type="submit">Clear history</button>
       </form>
-      <a class="btn" href="/export">Download CSV</a>
+      <a class="btn primary" href="/export">Download CSV</a>
     </div>
   </div>
 
-  <div class="card">
+  <div class="grid g3 summary-grid">
+    <div class="card summary-tile">
+      <span class="summary-label">Stored records</span>
+      <strong class="summary-value">{{ records|length }}</strong>
+    </div>
+    <div class="card summary-tile">
+      <span class="summary-label">Storage mode</span>
+      <strong class="summary-value">Local only</strong>
+    </div>
+    <div class="card summary-tile">
+      <span class="summary-label">Export format</span>
+      <strong class="summary-value">CSV</strong>
+    </div>
+  </div>
+
+  <div class="card table-card">
     {% if records %}
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Age</th>
-              <th>Gender</th>
-              <th>Height (m)</th>
-              <th>Weight (kg)</th>
-              <th>BMI</th>
-              <th>Activity</th>
-              <th>Water (ml)</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Height (m)</th>
+            <th>Weight (kg)</th>
+            <th>BMI</th>
+            <th>Activity</th>
+            <th>Water (ml)</th>
+            <th>View</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
           {% for r in records %}
-            <tr>
-              <td>{{ r.date }}</td>
-              <td>{{ r.age }}</td>
-              <td>{{ r.gender }}</td>
-              <td>{{ "%.2f"|format(r.height_m) }}</td>
-              <td>{{ "%.1f"|format(r.weight_kg) }}</td>
-              <td>
-                {% if r.bmi is not none %}
-                  {{ "%.1f"|format(r.bmi) }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>{{ r.activity_level }}</td>
-              <td>{{ r.water_ml }}</td>
-            </tr>
+          <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.age }}</td>
+            <td>{{ r.gender }}</td>
+            <td>{{ "%.2f"|format(r.height_m) if r.height_m is not none else "" }}</td>
+            <td>{{ "%.1f"|format(r.weight_kg) if r.weight_kg is not none else "" }}</td>
+            <td>{{ "%.1f"|format(r.bmi) if r.bmi is not none else "" }}</td>
+            <td>{{ r.activity_level }}</td>
+            <td>{{ r.water_ml }}</td>
+            <td>
+              <a class="btn table-btn" href="/history/view/{{ r.id }}">View</a>
+            </td>
+            <td>
+              <form method="post" action="/history/delete/{{ r.id }}" onsubmit="return confirm('Delete this record only?');">
+                <button class="btn table-btn" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
           {% endfor %}
-          </tbody>
-        </table>
-      </div>
+        </tbody>
+      </table>
+    </div>
     {% else %}
-      <p class="muted">No records yet. Please add one in "Record".</p>
+      <div class="empty-state">
+        <div class="pill">No Data</div>
+        <h3>No history records yet</h3>
+        <p class="muted">Create your first record on the Record Today page and it will appear here automatically.</p>
+        <div class="actions">
+          <a class="btn primary" href="/record-today">Create a record</a>
+        </div>
+      </div>
     {% endif %}
   </div>
+
+  <p class="fine-print">Local-first prototype for lifestyle reference only. Not medical advice.</p>
 </section>
 
 {% endblock %}
