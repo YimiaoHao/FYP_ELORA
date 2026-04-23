@@ -198,7 +198,7 @@ This allows the obesity-level model to be retrained locally from the dataset in 
 ### Development environment
 - Windows local environment
 - Visual Studio Code
-- Git (optional for version control)
+- Git
 
 ---
 
