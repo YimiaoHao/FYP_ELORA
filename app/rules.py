@@ -3,23 +3,28 @@ from typing import List, Tuple
 
 def classify_bmi(bmi: float) -> Tuple[str, int]:
     """
-    Simple BMI category + base score (0-100)
+    7-level obesity / weight category based on BMI.
+    Returns:
+    - category label
+    - base rules score (0-100)
     """
     if bmi is None:
         return "Unknown", 0
 
     if bmi < 18.5:
-        return "Underweight", 25
+        return "Insufficient Weight", 25
     elif bmi < 25:
-        return "Normal weight", 35
+        return "Normal Weight", 35
     elif bmi < 30:
-        return "Overweight", 60
+        return "Overweight Level I", 55
     elif bmi < 35:
-        return "Obesity class I", 75
+        return "Overweight Level II", 70
     elif bmi < 40:
-        return "Obesity class II", 85
+        return "Obesity Type I", 80
+    elif bmi < 45:
+        return "Obesity Type II", 90
     else:
-        return "Obesity class III", 95
+        return "Obesity Type III", 95
 
 
 def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
@@ -32,13 +37,11 @@ def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
     bmi_category, score = classify_bmi(bmi)
     triggered_rules: List[str] = []
 
-    # BMI-related trigger
     if bmi is not None and bmi >= 25:
         triggered_rules.append(
             f"BMI is in the {bmi_category.lower()} range ({bmi:.1f})."
         )
 
-    # Family history
     family_history = (getattr(record, "family_history", "") or "").upper()
     if family_history.startswith("Y"):
         score += 5
@@ -46,7 +49,6 @@ def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
             "Family history of overweight/obesity was reported."
         )
 
-    # Activity level
     activity_level = (getattr(record, "activity_level", "") or "").lower()
     if activity_level == "low":
         score += 10
@@ -54,7 +56,6 @@ def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
             "Activity level is recorded as low."
         )
 
-    # Water intake
     water_ml = getattr(record, "water_ml", None)
     if isinstance(water_ml, (int, float)) and water_ml < 1500:
         score += 5
@@ -69,7 +70,15 @@ def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
 def generate_tips(record, bmi_category: str) -> List[str]:
     tips: List[str] = []
 
-    if bmi_category.startswith("Obesity") or bmi_category == "Overweight":
+    higher_risk_categories = {
+        "Overweight Level I",
+        "Overweight Level II",
+        "Obesity Type I",
+        "Obesity Type II",
+        "Obesity Type III",
+    }
+
+    if bmi_category in higher_risk_categories:
         tips.append(
             "Your BMI is in the overweight/obesity range. Consider gradually reducing sugary drinks and high-calorie snacks."
         )
@@ -77,12 +86,12 @@ def generate_tips(record, bmi_category: str) -> List[str]:
             "If possible, discuss your weight and lifestyle with a healthcare professional rather than making extreme short-term changes."
         )
 
-    if bmi_category == "Underweight":
+    if bmi_category == "Insufficient Weight":
         tips.append(
-            "Your BMI is in the underweight range. If this is unintentional, consider discussing it with a clinician or dietitian."
+            "Your BMI is in the insufficient weight range. If this is unintentional, consider discussing it with a clinician or dietitian."
         )
 
-    if bmi_category == "Normal weight":
+    if bmi_category == "Normal Weight":
         tips.append(
             "Your BMI is in the normal range. Try to maintain a stable weight with balanced meals and regular activity."
         )

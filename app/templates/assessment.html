@@ -1,14 +1,376 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+  .assessment-shell{
+    display:grid;
+    grid-template-columns:minmax(320px, 0.82fr) minmax(0, 1.68fr);
+    grid-template-areas:
+      "score rules"
+      "record rules"
+      "model bmi";
+    gap:18px;
+    align-items:stretch;
+  }
+
+  .assessment-grid-card{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .assessment-score-card{
+    grid-area:score;
+    padding:24px 26px;
+  }
+
+  .assessment-score-card .metric-display{
+    margin:10px 0 12px;
+    font-size:clamp(2.8rem, 4.4vw, 4rem);
+  }
+
+  .assessment-score-card .risk-line{
+    margin:0 0 8px;
+    font-size:1rem;
+  }
+
+  .assessment-score-card .note-line{
+    margin-top:14px;
+  }
+
+  .final-risk-details{
+    margin:8px 0 10px;
+  }
+
+  .final-risk-details summary{
+    list-style:none;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--heading);
+    font-size:1rem;
+    line-height:1.4;
+    user-select:none;
+  }
+
+  .final-risk-details summary::-webkit-details-marker{
+    display:none;
+  }
+
+  .final-risk-caret{
+    display:inline-block;
+    font-size:.9rem;
+    color:var(--heading);
+    transition:transform .18s ease;
+  }
+
+  .final-risk-details[open] .final-risk-caret{
+    transform:rotate(90deg);
+  }
+
+  .final-risk-formula{
+    margin-top:10px;
+    padding:10px 12px;
+    border:1px solid rgba(203, 189, 164, 0.62);
+    border-radius:12px;
+    background:rgba(255, 253, 250, 0.86);
+  }
+
+  .final-risk-formula p{
+    margin:0 0 8px;
+  }
+
+  .final-risk-formula code{
+    display:inline-block;
+    background:rgba(243, 237, 225, 0.9);
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:.92rem;
+  }
+
+  .record-stack-card{
+    grid-area:record;
+    padding:22px 24px 24px;
+  }
+
+  .record-stack-card h3{
+    margin-bottom:14px;
+  }
+
+  .record-stack{
+    display:grid;
+    gap:8px;
+  }
+
+  .record-row{
+    display:grid;
+    grid-template-columns:110px 1fr;
+    gap:12px;
+    align-items:center;
+    padding:12px 16px;
+    border-radius:14px;
+    background:rgba(243, 237, 225, 0.62);
+    border:1px solid rgba(203, 189, 164, 0.55);
+  }
+
+  .record-row span{
+    color:var(--muted);
+    font-size:0.92rem;
+    line-height:1.35;
+  }
+
+  .record-row strong{
+    font-size:1.02rem;
+    line-height:1.35;
+  }
+
+  .rules-engine-card{
+    grid-area:rules;
+    padding:24px 26px 24px;
+  }
+
+  .rules-engine-card h3{
+    margin-bottom:18px;
+  }
+
+  .category-panel{
+    padding:18px 18px 16px;
+    border-radius:20px;
+    background:rgba(255, 253, 250, 0.92);
+    border:1px solid rgba(203, 189, 164, 0.7);
+    flex:1;
+  }
+
+  .category-panel h4{
+    margin:0 0 14px;
+    color:var(--heading);
+    font-size:1.02rem;
+    line-height:1.35;
+    font-weight:700;
+  }
+
+  .category-list{
+    display:grid;
+    gap:10px;
+  }
+
+  .category-row{
+    display:grid;
+    grid-template-columns:44px minmax(0, 1fr) auto;
+    gap:14px;
+    align-items:center;
+    padding:12px 14px;
+    border-radius:16px;
+    border:1px solid rgba(203, 189, 164, 0.55);
+    background:#fffdfa;
+    transition:all .18s ease;
+  }
+
+  .category-row.current{
+    border-color:#4da166;
+    background:rgba(77, 161, 102, 0.09);
+    box-shadow:0 0 0 2px rgba(77, 161, 102, 0.10);
+  }
+
+  .category-index{
+    width:34px;
+    height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:999px;
+    background:var(--surface-strong);
+    color:var(--heading);
+    font-size:0.95rem;
+    font-weight:800;
+  }
+
+  .category-row.current .category-index{
+    background:rgba(77, 161, 102, 0.18);
+    color:#266b3b;
+  }
+
+  .category-main{
+    display:grid;
+    gap:4px;
+    min-width:0;
+  }
+
+  .category-name{
+    font-size:1rem;
+    color:var(--heading);
+    font-weight:700;
+    line-height:1.35;
+  }
+
+  .category-tag{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    width:max-content;
+    padding:4px 10px;
+    border-radius:999px;
+    background:rgba(77, 161, 102, 0.16);
+    color:#2d7a45;
+    font-size:0.82rem;
+    font-weight:700;
+  }
+
+  .category-range{
+    color:var(--muted);
+    font-size:0.98rem;
+    line-height:1.35;
+    white-space:nowrap;
+  }
+
+  .rules-helper{
+    margin:14px 4px 0;
+    color:var(--muted);
+    font-size:0.95rem;
+    line-height:1.6;
+  }
+
+  .model-card{
+    grid-area:model;
+    padding:22px 24px;
+  }
+
+  .model-card h3{
+    margin-bottom:14px;
+  }
+
+  .bmi-score-card{
+    grid-area:bmi;
+    padding:22px 24px;
+  }
+
+  .bmi-score-top{
+    display:grid;
+    grid-template-columns:1fr 1px 1fr;
+    gap:20px;
+    align-items:start;
+    margin-bottom:16px;
+  }
+
+  .bmi-score-divider{
+    width:1px;
+    align-self:stretch;
+    background:rgba(203, 189, 164, 0.75);
+  }
+
+  .bmi-score-box{
+    display:grid;
+    gap:8px;
+  }
+
+  .bmi-score-box span{
+    color:var(--muted);
+    font-size:.95rem;
+  }
+
+  .bmi-score-box strong{
+    font-size:2.05rem;
+    line-height:1;
+    color:var(--primary-strong);
+    font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+  }
+
+  .rules-score-panel h4{
+    margin:0 0 10px;
+    color:var(--heading);
+    font-size:1.02rem;
+    line-height:1.35;
+    font-weight:700;
+  }
+
+  .rules-score-ticks{
+    display:flex;
+    justify-content:space-between;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:0.88rem;
+  }
+
+  .rules-score-scale{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:14px;
+    align-items:end;
+    margin-top:10px;
+  }
+
+  .rules-score-note{
+    margin:0;
+    color:var(--muted);
+    font-size:0.95rem;
+    line-height:1.6;
+  }
+
+  .rules-score-value{
+    color:var(--primary-strong);
+    font-size:2.1rem;
+    line-height:1;
+    font-weight:800;
+    font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+  }
+
+  .explain-card h3,
+  .tips-card h3{
+    margin-bottom:14px;
+  }
+
+  @media (max-width:1100px){
+    .assessment-shell{
+      grid-template-columns:1fr;
+      grid-template-areas:
+        "score"
+        "record"
+        "rules"
+        "model"
+        "bmi";
+    }
+
+    .assessment-grid-card{
+      height:auto;
+    }
+  }
+
+  @media (max-width:760px){
+    .record-row{
+      grid-template-columns:1fr;
+      gap:6px;
+    }
+
+    .category-row{
+      grid-template-columns:40px minmax(0, 1fr);
+    }
+
+    .category-range{
+      grid-column:2 / 3;
+      white-space:normal;
+    }
+
+    .bmi-score-top{
+      grid-template-columns:1fr;
+    }
+
+    .bmi-score-divider{
+      display:none;
+    }
+
+    .rules-score-scale{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+
 <section class="section">
   <div class="section-head">
     <div>
       <div class="pill">Assessment</div>
       <h2>Risk Assessment</h2>
-      <p class="sub">
-        The scoring logic stays unchanged. This page now presents the same result in a cleaner, easier-to-read layout.
-      </p>
+      <p class="sub">The scoring logic stays unchanged. This page now presents the same result in a cleaner, easier-to-read layout.</p>
     </div>
   </div>
 
@@ -23,123 +385,138 @@
     </div>
   {% else %}
 
-    <div class="grid g3 summary-grid">
-      <div class="card summary-tile accent-card">
-        <span class="summary-label">Final risk</span>
-        <strong class="summary-value">{{ final_risk_percent }}%</strong>
-      </div>
-      <div class="card summary-tile">
-        <span class="summary-label">Risk tier</span>
-        <strong class="summary-value">{{ risk_tier }}</strong>
-      </div>
-      <div class="card summary-tile">
-        <span class="summary-label">Assessment mode</span>
-        <strong class="summary-value">{{ mode|replace('_', ' ')|title }}</strong>
-      </div>
-    </div>
+    {% set category_items = [
+      {"key": "Insufficient Weight", "label": "Insufficient Weight", "range": "BMI < 18.5"},
+      {"key": "Normal Weight", "label": "Normal Weight", "range": "18.5 – 24.9"},
+      {"key": "Overweight Level I", "label": "Overweight Level I", "range": "25.0 – 29.9"},
+      {"key": "Overweight Level II", "label": "Overweight Level II", "range": "30.0 – 34.9"},
+      {"key": "Obesity Type I", "label": "Obesity Type I", "range": "35.0 – 39.9"},
+      {"key": "Obesity Type II", "label": "Obesity Type II", "range": "40.0 – 44.9"},
+      {"key": "Obesity Type III", "label": "Obesity Type III", "range": "≥ 45.0"}
+    ] %}
 
-    <div class="grid g2">
-      <div class="card highlight">
-        <div class="pill">{{ mode|upper }}</div>
+    <div class="assessment-shell">
+      <div class="card highlight assessment-grid-card assessment-score-card">
         <h3>Final Hybrid Risk Score</h3>
         <p class="metric-display">{{ final_risk_percent }}%</p>
-        <details class="calc-toggle">
-          <summary class="risk-tier-summary">
-            <span class="risk-tier-clickable">Risk tier: {{ risk_tier }}</span>
-          </summary>
 
-          <div class="calc-details">
+        <details class="final-risk-details">
+          <summary>
+            <span class="final-risk-caret">▶</span>
+            <strong>Risk tier:</strong> {{ risk_tier }}
+          </summary>
+          <div class="final-risk-formula">
             <p class="muted">Final risk combines the model output and the rules-based score.</p>
-            <p class="muted"><code>Final Risk = 0.7 × Model Component + 0.3 × Rules Score</code></p>
+            <code>Final Risk = 0.7 × Model Component + 0.3 × Rules Score</code>
           </div>
         </details>
+
         <div class="risk-bar-outer" aria-label="final risk">
           <div class="risk-bar-fill" style="width: {{ final_risk_percent }}%;"></div>
         </div>
+
         {% if warning %}
-          <p class="muted" style="margin-top: 12px;"><strong>Warning:</strong> {{ warning }}</p>
+          <p class="muted note-line"><strong>Warning:</strong> {{ warning }}</p>
         {% endif %}
-        <p class="muted" style="margin-top: 12px;">For lifestyle reference only, not medical advice.</p>
+        <p class="muted note-line">For lifestyle reference only, not medical advice.</p>
       </div>
 
-      <div class="card">
-        <div class="pill">Latest Record</div>
+      <div class="card assessment-grid-card record-stack-card">
         <h3>Latest record</h3>
-        <div class="detail-grid compact">
-          <div class="detail-item"><span>Date</span><strong>{{ record.date }}</strong></div>
-          <div class="detail-item"><span>Age</span><strong>{{ record.age }}</strong></div>
-          <div class="detail-item"><span>Gender</span><strong>{{ record.gender }}</strong></div>
-          <div class="detail-item"><span>Height</span><strong>{{ "%.2f"|format(record.height_m) }} m</strong></div>
-          <div class="detail-item"><span>Weight</span><strong>{{ "%.1f"|format(record.weight_kg) }} kg</strong></div>
-          <div class="detail-item"><span>Activity</span><strong>{{ record.activity_level }}</strong></div>
-          <div class="detail-item"><span>Water</span><strong>{{ record.water_ml }} ml</strong></div>
-          <div class="detail-item"><span>Family history</span><strong>{{ record.family_history }}</strong></div>
+        <div class="record-stack">
+          <div class="record-row"><span>Date</span><strong>{{ record.date }}</strong></div>
+          <div class="record-row"><span>Age</span><strong>{{ record.age }}</strong></div>
+          <div class="record-row"><span>Gender</span><strong>{{ record.gender }}</strong></div>
+          <div class="record-row"><span>Height</span><strong>{{ "%.2f"|format(record.height_m) }} m</strong></div>
+          <div class="record-row"><span>Weight</span><strong>{{ "%.1f"|format(record.weight_kg) }} kg</strong></div>
+          <div class="record-row"><span>Activity</span><strong>{{ record.activity_level }}</strong></div>
+          <div class="record-row"><span>Water</span><strong>{{ record.water_ml }} ml</strong></div>
+          <div class="record-row"><span>Family history</span><strong>{{ record.family_history }}</strong></div>
         </div>
       </div>
-    </div>
 
-    <div class="grid g2" style="margin-top: 18px;">
-      <div class="card">
+      <div class="card assessment-grid-card rules-engine-card">
         <div class="pill">Rules Engine</div>
         <h3>Rules-based assessment</h3>
-        <div class="detail-grid compact">
-          <div class="detail-item"><span>BMI</span><strong>{{ "%.1f"|format(bmi) }}</strong></div>
-          <div class="detail-item"><span>Category</span><strong>{{ bmi_category }}</strong></div>
-          <div class="detail-item"><span>Rules score</span><strong>{{ rules_score }}/100</strong></div>
+
+        <div class="category-panel">
+          <h4>Weight category scale <span class="muted">(7-level obesity classification)</span></h4>
+
+          <div class="category-list">
+            {% for item in category_items %}
+              <div class="category-row {% if bmi_category == item.key %}current{% endif %}">
+                <div class="category-index">{{ loop.index }}</div>
+
+                <div class="category-main">
+                  <div class="category-name">{{ item.label }}</div>
+                  {% if bmi_category == item.key %}
+                    <div class="category-tag">✓ Current</div>
+                  {% endif %}
+                </div>
+
+                <div class="category-range">{{ item.range }}</div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <p class="rules-helper">
+            Your current rules-based category is highlighted in the 7-level obesity classification.
+          </p>
         </div>
-        <div class="risk-bar-outer" aria-label="rules risk">
-          <div class="risk-bar-fill" style="width: {{ rules_score }}%;"></div>
-        </div>
-        <p class="muted" style="margin-top: 12px;">Rules score on a 0 to 100 scale: {{ rules_score }}</p>
       </div>
 
-      <div class="card">
+      <div class="card assessment-grid-card model-card">
         <div class="pill">Model Output</div>
         <h3>Model-based assessment</h3>
         {% if ml_available %}
           <div class="detail-grid compact">
-            <div class="detail-item">
-              <span>Predicted obesity level</span>
-              <strong>{{ model_label }}</strong>
-            </div>
-
-            <div class="detail-item">
-              <span>Current prediction probability</span>
-              <strong>{{ "%.0f"|format(model_confidence * 100) }}%</strong>
-            </div>
-
-            {% if benchmark_accuracy is not none %}
-            <div class="detail-item">
-              <span>Offline validation accuracy</span>
-              <strong>{{ "%.1f"|format(benchmark_accuracy * 100) }}%</strong>
-            </div>
-            {% endif %}
-
-            {% if benchmark_macro_f1 is not none %}
-            <div class="detail-item">
-              <span>Offline validation macro-F1</span>
-              <strong>{{ "%.1f"|format(benchmark_macro_f1 * 100) }}%</strong>
-            </div>
-            {% endif %}
+            <div class="detail-item"><span>Predicted obesity level</span><strong>{{ model_label }}</strong></div>
+            <div class="detail-item"><span>Current prediction probability</span><strong>{{ "%.0f"|format(model_confidence * 100) }}%</strong></div>
+            <div class="detail-item"><span>Model risk direction</span><strong>{{ model_risk_base }}%</strong></div>
+            <div class="detail-item"><span>P(model) used in fusion</span><strong>{{ model_risk_percent }}%</strong></div>
           </div>
-
-          <p class="muted" style="margin-top: 12px;">
-            The probability above is for this record only. It is not the model’s overall test accuracy.
-          </p>
-
-          {% if benchmark_model %}
-          <p class="muted">
-            Best offline benchmark model: {{ benchmark_model }}
-          </p>
-          {% endif %}
         {% else %}
           <p class="muted">Model prediction is currently unavailable.</p>
           <p class="muted">Current result uses rules-only mode.</p>
         {% endif %}
       </div>
+
+      <div class="card assessment-grid-card bmi-score-card">
+        <div class="bmi-score-top">
+          <div class="bmi-score-box">
+            <span>BMI</span>
+            <strong>{{ "%.1f"|format(bmi) }}</strong>
+          </div>
+
+          <div class="bmi-score-divider"></div>
+
+          <div class="bmi-score-box">
+            <span>Rules Score</span>
+            <strong>{{ rules_score }}/100</strong>
+          </div>
+        </div>
+
+        <div class="rules-score-panel">
+          <h4>Rules score on a 0 to 100 scale</h4>
+          <div class="risk-bar-outer" aria-label="rules risk">
+            <div class="risk-bar-fill" style="width: {{ rules_score }}%;"></div>
+          </div>
+          <div class="rules-score-ticks">
+            <span>0</span>
+            <span>50</span>
+            <span>100</span>
+          </div>
+          <div class="rules-score-scale">
+            <p class="rules-score-note">
+              Higher scores indicate greater alignment with healthier weight-related rules.
+            </p>
+            <div class="rules-score-value">{{ rules_score }}/100</div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card" style="margin-top: 18px;">
+    <div class="card explain-card" style="margin-top: 18px;">
       <div class="pill">Explain</div>
       <h3>Triggered rules</h3>
       {% if triggered_rules %}
@@ -154,7 +531,7 @@
     </div>
 
     {% if tips %}
-    <div class="card" style="margin-top: 18px;">
+    <div class="card tips-card" style="margin-top: 18px;">
       <div class="pill">Tips</div>
       <h3>Personalised tips</h3>
       <ul class="list-clean muted">
