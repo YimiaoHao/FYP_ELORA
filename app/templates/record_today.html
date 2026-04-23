@@ -45,7 +45,12 @@
               name="age"
               min="5"
               max="100"
+              step="1"
               required
+              placeholder="5 to 100, whole numbers only"
+              title="Please enter a whole number between 5 and 100."
+              oninvalid="this.setCustomValidity('Please enter a whole number between 5 and 100.')"
+              oninput="this.setCustomValidity('')"
               value="{{ data.age if data else '' }}"
             >
           </div>
@@ -56,7 +61,6 @@
               <option value="">-- select --</option>
               <option value="Male" {% if data and data.gender == 'Male' %}selected{% endif %}>Male</option>
               <option value="Female" {% if data and data.gender == 'Female' %}selected{% endif %}>Female</option>
-              <option value="Other" {% if data and data.gender == 'Other' %}selected{% endif %}>Other / Prefer not to say</option>
             </select>
           </div>
 
@@ -69,6 +73,10 @@
               min="0.50"
               max="2.50"
               required
+              placeholder="0.50 to 2.50 m"
+              title="Please enter height between 0.50 and 2.50 metres."
+              oninvalid="this.setCustomValidity('Please enter height between 0.50 and 2.50 metres.')"
+              oninput="this.setCustomValidity('')"
               value="{{ data.height_m if data else '' }}"
             >
           </div>
@@ -82,6 +90,10 @@
               min="1"
               max="300"
               required
+              placeholder="1.0 to 300.0 kg"
+              title="Please enter weight between 1.0 and 300.0 kg."
+              oninvalid="this.setCustomValidity('Please enter weight between 1.0 and 300.0 kg.')"
+              oninput="this.setCustomValidity('')"
               value="{{ data.weight_kg if data else '' }}"
             >
           </div>
@@ -111,9 +123,12 @@
               type="number"
               name="water_ml"
               min="0"
-              max="10000"
               step="100"
               required
+              placeholder="e.g. 1500 (100 ml steps)"
+              title="Please enter water intake in 100 ml steps, such as 1500 or 1700."
+              oninvalid="this.setCustomValidity('Please enter water intake in 100 ml steps, such as 1500 or 1700.')"
+              oninput="this.setCustomValidity('')"
               value="{{ data.water_ml if data else '' }}"
             >
           </div>

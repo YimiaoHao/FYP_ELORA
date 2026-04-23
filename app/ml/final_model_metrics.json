@@ -1,0 +1,15 @@
+{
+  "model_name": "gb_optimised",
+  "accuracy": 0.8964354527938343,
+  "macro_f1": 0.8854049288753975,
+  "conf_mean": 0.885559477748415,
+  "conf_p50": 0.9509886139501033,
+  "best_cv_macro_f1": 0.8765096682635881,
+  "best_params": {
+    "clf__learning_rate": 0.05,
+    "clf__max_depth": 3,
+    "clf__min_samples_split": 5,
+    "clf__n_estimators": 250,
+    "clf__subsample": 0.8
+  }
+}

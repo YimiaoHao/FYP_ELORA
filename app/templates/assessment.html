@@ -43,8 +43,16 @@
         <div class="pill">{{ mode|upper }}</div>
         <h3>Final Hybrid Risk Score</h3>
         <p class="metric-display">{{ final_risk_percent }}%</p>
-        <p><strong>Risk tier:</strong> {{ risk_tier }}</p>
-        <p class="muted">Risk = <code>0.7 x Model_Prob + 0.3 x Rules_Score</code></p>
+        <details class="calc-toggle">
+          <summary class="risk-tier-summary">
+            <span class="risk-tier-clickable">Risk tier: {{ risk_tier }}</span>
+          </summary>
+
+          <div class="calc-details">
+            <p class="muted">Final risk combines the model output and the rules-based score.</p>
+            <p class="muted"><code>Final Risk = 0.7 × Model Component + 0.3 × Rules Score</code></p>
+          </div>
+        </details>
         <div class="risk-bar-outer" aria-label="final risk">
           <div class="risk-bar-fill" style="width: {{ final_risk_percent }}%;"></div>
         </div>
@@ -56,8 +64,9 @@
 
       <div class="card">
         <div class="pill">Latest Record</div>
-        <h3>Latest record ({{ record.date }})</h3>
+        <h3>Latest record</h3>
         <div class="detail-grid compact">
+          <div class="detail-item"><span>Date</span><strong>{{ record.date }}</strong></div>
           <div class="detail-item"><span>Age</span><strong>{{ record.age }}</strong></div>
           <div class="detail-item"><span>Gender</span><strong>{{ record.gender }}</strong></div>
           <div class="detail-item"><span>Height</span><strong>{{ "%.2f"|format(record.height_m) }} m</strong></div>
@@ -120,7 +129,7 @@
 
           {% if benchmark_model %}
           <p class="muted">
-            Best offline benchmark model: {{ benchmark_model|upper }}
+            Best offline benchmark model: {{ benchmark_model }}
           </p>
           {% endif %}
         {% else %}

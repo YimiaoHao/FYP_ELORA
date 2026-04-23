@@ -9,6 +9,7 @@ import datetime as dt
 import io
 import csv
 import logging
+import json
 
 from .schemas import RecordInput, PredictionResponse
 from .ml_service import predict_obesity_level
@@ -62,9 +63,10 @@ risk_logger = setup_file_logger("elora.risk", "risk_calc.log")
 
 
 # -----------------------------
-# Benchmark metrics
+# Benchmark / final metrics
 # -----------------------------
 BENCHMARK_PATH = BASE_DIR / "ml" / "benchmark_results.csv"
+FINAL_METRICS_PATH = BASE_DIR / "ml" / "final_model_metrics.json"
 
 
 def _safe_float(value, default=None):
@@ -74,6 +76,25 @@ def _safe_float(value, default=None):
         return default
 
 
+def format_model_name(name: str | None) -> str | None:
+    if not name:
+        return None
+
+    mapping = {
+        "gb_optimised": "Optimised Gradient Boosting",
+        "gb": "Gradient Boosting",
+        "rf": "Random Forest",
+        "logreg": "Logistic Regression",
+        "svm_rbf": "SVM (RBF)",
+        "mlp": "MLP",
+        "dt": "Decision Tree",
+        "knn": "KNN",
+    }
+
+    key = str(name).strip().lower()
+    return mapping.get(key, str(name))
+
+
 def load_best_benchmark_metrics():
     default = {
         "benchmark_model": None,
@@ -81,6 +102,21 @@ def load_best_benchmark_metrics():
         "benchmark_macro_f1": None,
     }
 
+    # First try to read the final optimised model metrics
+    if FINAL_METRICS_PATH.exists():
+        try:
+            with open(FINAL_METRICS_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            return {
+                "benchmark_model": format_model_name(data.get("model_name")),
+                "benchmark_accuracy": _safe_float(data.get("accuracy")),
+                "benchmark_macro_f1": _safe_float(data.get("macro_f1")),
+            }
+        except Exception as e:
+            app_logger.warning("Failed to load final model metrics: %s", e)
+
+    # Fallback to baseline benchmark CSV
     if not BENCHMARK_PATH.exists():
         return default
 
@@ -100,7 +136,7 @@ def load_best_benchmark_metrics():
         )
 
         return {
-            "benchmark_model": best.get("model"),
+            "benchmark_model": format_model_name(best.get("model")),
             "benchmark_accuracy": _safe_float(best.get("accuracy")),
             "benchmark_macro_f1": _safe_float(best.get("macro_f1")),
         }
@@ -258,9 +294,9 @@ def validate_record_form(
     if not (5 <= age <= 100):
         errors.append("Age must be between 5 and 100.")
 
-    allowed_gender = {"Male", "Female", "Other", "M", "F", "O"}
+    allowed_gender = {"Male", "Female", "M", "F"}
     if gender not in allowed_gender:
-        errors.append("Gender must be Male, Female, or Other.")
+        errors.append("Gender must be Male or Female.")
 
     if not (0 < height_m <= 2.5):
         errors.append("Height must be between 0 and 2.5 metres.")
@@ -383,7 +419,7 @@ async def record_today_submit(
 
     bmi = round(weight_kg / (height_m ** 2), 1) if height_m > 0 else None
 
-    gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+    gender_map = {"M": "Male", "F": "Female"}
     gender = gender_map.get(gender, gender)
 
     family_map = {
