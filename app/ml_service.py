@@ -1,3 +1,15 @@
+'''
+找到模型文件 obesity_model.joblib
+第一次预测时加载模型
+接收用户 record
+清理 gender / family_history / activity_level
+把数字字段安全转换
+兼容旧字段名
+转换成 7 个特征 DataFrame
+调用 predict_proba()
+找概率最高的类别
+返回 predicted obesity level 和 confidence
+'''
 # 模型加载和预测
 from pathlib import Path
 from typing import Tuple
@@ -6,11 +18,11 @@ import os
 import joblib
 import pandas as pd
 
-# Model file path: app/ml/obesity_model.joblib
+# 模型路径和全局模型变量
 MODEL_PATH = Path(__file__).resolve().parent / "ml" / "obesity_model.joblib"
 _model = None
 
-
+# load_model() 加载模型
 def load_model():
     """Lazy-load model (joblib) once."""
     global _model
@@ -23,7 +35,7 @@ def load_model():
     return _model
 
 
-# Normalizers
+# 标准化
 def normalize_gender_app(v) -> str:
     """
     Normalize app gender to training format: 'Male'/'Female'.
@@ -63,7 +75,7 @@ def _norm_activity_level(x) -> str:
     return s
 
 
-#  Safe numeric parsers
+#  安全数字转换
 def _to_int(v, default: int) -> int:
     if v is None or v == "":
         return default
@@ -81,7 +93,7 @@ def _to_float(v, default: float) -> float:
     except Exception:
         return default
 
-
+# 核心函数
 def record_to_features(record) -> pd.DataFrame:
     """
     Map a Record (or record-like object) to the 7-feature DataFrame
@@ -98,7 +110,6 @@ def record_to_features(record) -> pd.DataFrame:
     height_m = _to_float(getattr(record, "height_m", None), default=1.65)
     weight_kg = _to_float(getattr(record, "weight_kg", None), default=60.0)
 
-    # Support legacy field name: family_hist
     fh_raw = (
         getattr(record, "family_history", None)
         or getattr(record, "family_hist", None)
@@ -106,6 +117,7 @@ def record_to_features(record) -> pd.DataFrame:
     )
     family_history = normalize_family_history(fh_raw)
 
+# 取活动水平，兼容旧字段名
     activity_raw = (
         getattr(record, "activity_level", None)
         or getattr(record, "activity", None)
@@ -113,7 +125,6 @@ def record_to_features(record) -> pd.DataFrame:
     )
     activity_level = _norm_activity_level(activity_raw)
 
-    # Support possible legacy names
     water_raw = (
         getattr(record, "water_ml", None)
         or getattr(record, "water", None)
@@ -134,7 +145,7 @@ def record_to_features(record) -> pd.DataFrame:
 
     return X
 
-
+# 真正调用模型预测
 def predict_label(features_df: pd.DataFrame) -> Tuple[str, float]:
     """Return (label, confidence 0~1)."""
     model = load_model()

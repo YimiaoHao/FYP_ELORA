@@ -1,6 +1,11 @@
 from typing import List, Tuple
 
-
+'''
+BMI 分类
+规则加分
+生成解释
+生成建议
+'''
 def classify_bmi(bmi: float) -> Tuple[str, int]:
     """
     7-level obesity / weight category based on BMI.
@@ -26,7 +31,14 @@ def classify_bmi(bmi: float) -> Tuple[str, int]:
     else:
         return "Obesity Type III", 95
 
-
+'''
+先调用 classify_bmi() 得到 BMI 基础分
+如果 BMI >= 25，加入一条 BMI 触发规则
+如果有 family history，加 5 分
+如果 activity_level 是 low，加 10 分
+如果 water_ml < 1500，加 5 分
+最后把分数限制在 0 到 100
+'''
 def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
     """
     Return:
@@ -66,7 +78,10 @@ def evaluate_rule_score(record, bmi: float) -> Tuple[str, int, List[str]]:
     score = max(0, min(100, int(score)))
     return bmi_category, score, triggered_rules
 
-
+'''
+因为有时候不同规则可能生成类似建议,
+最后用 set 去重，保证页面上建议不会重复。
+'''
 def generate_tips(record, bmi_category: str) -> List[str]:
     tips: List[str] = []
 

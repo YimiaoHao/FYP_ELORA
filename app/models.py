@@ -1,3 +1,5 @@
+# 文件定义了用户记录在数据库里怎么存
+
 # 数据库表结构
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime
 from sqlalchemy.sql import func

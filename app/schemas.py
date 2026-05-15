@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-
+# 定义 API 输入需要哪些字段
 class RecordInput(BaseModel):
     age: int = Field(..., ge=5, le=100, description="Age in years")
     gender: str = Field(..., description="Gender")
@@ -13,7 +13,7 @@ class RecordInput(BaseModel):
     activity_level: str = Field(..., description="low / medium / high")
     water_ml: int = Field(..., ge=0, le=10000, description="Water intake in ml")
 
-
+# 定义 API 返回哪些结果
 class PredictionResponse(BaseModel):
     bmi: float
     bmi_category: str
