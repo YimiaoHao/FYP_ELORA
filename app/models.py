@@ -1,3 +1,4 @@
+# 数据库表结构
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime
 from sqlalchemy.sql import func
 from .database import Base

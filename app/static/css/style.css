@@ -1,3 +1,15 @@
+/*
+先定义全局颜色、字体、圆角、阴影
+设置全站基础背景和文字风格
+设计顶部导航栏
+设计首页 hero 区域
+设计通用卡片、按钮、表单、表格
+设计 History、Trends、Assessment、Privacy 等页面需要的组件
+统一正文可读性
+加入响应式布局，适配不同屏幕
+*/
+
+/*全局变量*/
 :root{
   --bg:#f5f1e8;
   --bg-soft:#fbf9f3;
@@ -24,6 +36,7 @@
   --body-copy-color:#5f6d65;
 }
 
+/*基础页面样式*/
 *{box-sizing:border-box}
 html,body{height:100%}
 
@@ -38,6 +51,7 @@ body::before{
   display:none;
 }
 
+/*链接和整体容器*/
 a{
   color:var(--primary);
   text-decoration:none;
@@ -52,6 +66,7 @@ a:hover{
   margin:0 auto;
 }
 
+/*顶部导航栏 Header 和 Nav*/
 .site-header{
   position:sticky;
   top:0;
@@ -145,6 +160,7 @@ a:hover{
   padding:36px 0 48px;
 }
 
+/*标题、正文、段落样式*/
 h1,h2,h3{
   margin:0;
   color:var(--heading);
@@ -237,6 +253,7 @@ code{
   font-size:.88rem;
 }
 
+/*通用布局 Grid*/
 .grid{
   display:grid;
   gap:18px;
@@ -254,8 +271,7 @@ code{
   grid-template-columns:repeat(4, minmax(0, 1fr));
 }
 
-/* ===== Hero ===== */
-
+/* Hero 首页主视觉区域 */
 .hero-panel{
   display:grid;
   grid-template-columns:minmax(0, 1.3fr) minmax(320px, .9fr);
@@ -323,7 +339,7 @@ code{
   margin:0 0 18px;
 }
 
-/* ===== Cards ===== */
+/* Card 卡片样式 */
 
 .card{
   background:rgba(255, 253, 250, 0.92);
@@ -341,8 +357,6 @@ code{
   background:
     linear-gradient(180deg, rgba(197, 117, 61, 0.10), rgba(255, 253, 250, 0.96));
 }
-
-/* ===== Feature cards ===== */
 
 .feature-card{
   position:relative;
@@ -415,7 +429,7 @@ code{
   margin-bottom:0;
 }
 
-/* ===== Summary / metrics ===== */
+/* Summary 和 Metric 指标展示 */
 
 .summary-grid{
   margin-bottom:18px;
@@ -451,7 +465,6 @@ code{
   line-height:1;
 }
 
-/* ===== Stack blocks ===== */
 
 .stack-list{
   display:grid;
@@ -482,8 +495,6 @@ code{
   color:var(--muted);
 }
 
-/* ===== Layout helpers ===== */
-
 .split-layout{
   display:grid;
   grid-template-columns:minmax(0, 1.45fr) minmax(280px, .75fr);
@@ -496,8 +507,7 @@ code{
   gap:18px;
 }
 
-/* ===== Forms ===== */
-
+/* 表单样式 Forms */
 .form-card{
   padding:28px;
 }
@@ -534,7 +544,7 @@ code{
   box-shadow:0 0 0 4px rgba(31, 92, 75, 0.12);
 }
 
-/* ===== Buttons ===== */
+/* 按钮样式 Buttons */
 
 .actions{
   display:flex;
@@ -590,7 +600,7 @@ code{
   font-size:.85rem;
 }
 
-/* ===== Other cards / lists / tables ===== */
+/* 表格、详情、列表样式 */
 
 .alert-card{
   border-color:rgba(180, 67, 62, 0.28);
@@ -642,6 +652,7 @@ code{
   line-height:1.4;
 }
 
+/*图表和风险条样式*/
 .table-card{
   padding:18px;
 }
@@ -713,7 +724,7 @@ tbody tr:hover{
   background:linear-gradient(90deg, #d4703b 0%, #c24b45 48%, #8a2f2a 100%);
 }
 
-/* ===== Footer ===== */
+/* Footer 页脚 */
 
 .site-footer{
   padding:0 0 34px;
@@ -729,7 +740,7 @@ tbody tr:hover{
   font-size:.88rem;
 }
 
-/* ===== Assessment details toggle ===== */
+/* Assessment 公式展开区域 */
 
 .calc-toggle{
   margin:10px 0 14px;
@@ -765,7 +776,7 @@ tbody tr:hover{
   background:#f6f2ea;
 }
 
-/* ===== Unified body copy ===== */
+/* 统一正文字体大小 */
 
 .hero-copy .lead,
 .section .sub,
@@ -789,7 +800,7 @@ tbody tr:hover{
   color:var(--body-copy-color) !important;
 }
 
-/* ===== Responsive ===== */
+/* 响应式设计 Responsive */
 
 @media (max-width:980px){
   .hero-panel,
@@ -869,7 +880,7 @@ tbody tr:hover{
   }
 }
 
-/* ===== Record Today page ===== */
+/* Record Today 页面专门优化 */
 .split-layout{
   align-items:stretch;
 }
@@ -901,7 +912,7 @@ tbody tr:hover{
   padding-top:10px;
 }
 
-/* ===== Privacy page ===== */
+/* Privacy 页面专门优化 */
 .merged-privacy-card{
   padding:30px 36px;
   margin-bottom:18px;

@@ -1,3 +1,9 @@
+# 模型训练和对比代码
+# 这个脚本读取肥胖数据集，整理成系统需要的 7 个特征
+# 然后对比多个机器学习模型，选出表现最好的模型
+# 最后保存成 obesity_model.joblib，给网站后端调用。
+
+# 导入库
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 import json
@@ -30,7 +36,7 @@ RANDOM_STATE = 42
 # Whether to run GridSearch.
 RUN_GRID_SEARCH = False
 
-
+# 数据标准化
 def _normalize_gender(v) -> str:
     if pd.isna(v):
         return "Female"
@@ -52,7 +58,7 @@ def _normalize_yes_no_to_YN(v):
         return "N"
     return None
 
-
+# 读取和整理数据
 def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
     if not csv_path.exists():
         raise FileNotFoundError(f"Dataset not found: {csv_path}")
@@ -125,7 +131,7 @@ def load_and_prepare_data(csv_path: Path) -> Tuple[pd.DataFrame, pd.Series]:
 
     return df2, y
 
-
+# 数据预处理
 def build_preprocessor(numeric_features, categorical_features) -> ColumnTransformer:
     numeric_transformer = Pipeline(
         steps=[
@@ -148,7 +154,7 @@ def build_preprocessor(numeric_features, categorical_features) -> ColumnTransfor
         ]
     )
 
-
+# 计算模型预测信心
 def confidence_stats(pipe: Pipeline, X_test) -> Dict[str, float]:
     if not hasattr(pipe, "predict_proba"):
         return {
@@ -167,7 +173,7 @@ def confidence_stats(pipe: Pipeline, X_test) -> Dict[str, float]:
         "conf_max": float(np.max(top)),
     }
 
-
+# 训练并估计单个模型
 def train_and_evaluate_model(
     name: str,
     classifier,
@@ -201,7 +207,7 @@ def train_and_evaluate_model(
         **conf,
     }
 
-
+# 对比多个模型
 def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> Dict[str, Any]:
     candidates = {
         "logreg": LogisticRegression(max_iter=1000),
@@ -260,6 +266,7 @@ def compare_candidate_models(preprocessor, X_train, X_test, y_train, y_test) -> 
 
     return best
 
+# 网格搜索优化
 def grid_search_gradient_boosting(preprocessor, X_train, X_test, y_train, y_test):
     gb = GradientBoostingClassifier(random_state=RANDOM_STATE)
     pipe = Pipeline(steps=[("preprocess", preprocessor), ("clf", gb)])
@@ -317,7 +324,18 @@ def grid_search_gradient_boosting(preprocessor, X_train, X_test, y_train, y_test
 
     return best_model, metrics
 
-
+# 主流程
+'''
+第一，加载和整理数据
+第二，定义数值特征和类别特征
+第三，把数据分成训练集和测试集
+第四，建立预处理器
+第五，对比多个模型
+第六，如果 RUN_GRID_SEARCH=True，就跑网格搜索；
+    如果是 False，就直接使用对比结果中最好的模型。
+第七，把最终模型保存成obesity_model.joblib
+第八，把最终指标保存成final_model_metrics.json
+'''
 def main():
     print(f"Loading data from: {DATA_PATH}")
     X, y = load_and_prepare_data(DATA_PATH)
